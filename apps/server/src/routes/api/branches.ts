@@ -24,11 +24,22 @@ function moveBranchToParent(req: Request) {
     const branchToMove = becca.getBranch(branchId);
     const targetParentBranch = becca.getBranch(parentBranchId);
 
-    if (!branchToMove || !targetParentBranch) {
-        throw new ValidationError(`One or both branches '${branchId}', '${parentBranchId}' have not been found`);
+    // Disambiguating error messages pinpoints the information better
+    if (!branchToMove && !targetParentBranch) {
+        throw new ValidationError(
+            `Neither branch '${branchId}' nor parent branch '${parentBranchId}' was found`
+        );
+    }
+    if (!branchToMove) {
+        throw new ValidationError(`Branch '${branchId}' was not found`);
+    }
+    if (!targetParentBranch) {
+        throw new ValidationError(`Parent branch '${parentBranchId}' was not found`);
     }
 
-    return branchService.moveBranchToBranch(branchToMove, targetParentBranch, branchId);
+    console.log("MOVE TO");
+
+    return branchService.moveBranchToBranch(branchToMove, targetParentBranch);
 }
 
 function moveBranchBeforeNote(req: Request) {

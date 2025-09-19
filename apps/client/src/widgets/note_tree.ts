@@ -1703,18 +1703,22 @@ export default class NoteTreeWidget extends NoteContextAwareWidget {
 
     copyNotesToClipboardCommand({ node }: CommandListenerData<"copyNotesToClipboard">) {
         clipboard.copy(this.getSelectedOrActiveBranchIds(node));
+        console.log("paste NOTES FROM Clipboard");
     }
 
     cutNotesToClipboardCommand({ node }: CommandListenerData<"cutNotesToClipboard">) {
         clipboard.cut(this.getSelectedOrActiveBranchIds(node));
+        console.log("paste NOTES FROM Clipboard");
     }
 
     pasteNotesFromClipboardCommand({ node }: CommandListenerData<"pasteNotesFromClipboard">) {
+        console.log("paste NOTES FROM Clipboard");
         clipboard.pasteInto(node.data.branchId);
     }
 
     pasteNotesAfterFromClipboardCommand({ node }: CommandListenerData<"pasteNotesAfterFromClipboard">) {
         clipboard.pasteAfter(node.data.branchId);
+        console.log("paste NOTES FROM Clipboard");
     }
 
     async exportNoteCommand({ node }: CommandListenerData<"exportNote">) {
