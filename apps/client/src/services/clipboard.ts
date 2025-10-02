@@ -47,6 +47,7 @@ async function pasteInto(parentBranchId: string) {
     }
 
     if (clipboardMode === "cut") {
+        console.log("MOVE TO PARENT NOTE ID");
         await branchService.moveToParentNote(clipboardBranchIds, parentBranchId);
 
         clipboardBranchIds = [];

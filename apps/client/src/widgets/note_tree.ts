@@ -796,15 +796,28 @@ export default class NoteTreeWidget extends NoteContextAwareWidget {
     }
 
     async updateNode(node: Fancytree.FancytreeNode) {
-        const note = froca.getNoteFromCache(node.data.noteId);
-        const branch = froca.getBranch(node.data.branchId);
+        const note = await froca.getNote(node.data.noteId);
+        let branch = froca.getBranch(node.data.branchId, true);
 
         if (!note) {
             console.log(`Node update not possible because note '${node.data.noteId}' was not found.`);
             return;
         } else if (!branch) {
-            console.log(`Node update not possible because branch '${node.data.branchId}' was not found.`);
-            return;
+            // The branch may have been moved and acquired a new branchId.
+            // Try to resolve the current branchId from the parent/child pair and retry once.
+            const parentNode = node.getParent();
+            if (parentNode) {
+                const resolvedBranchId = await froca.getBranchId(parentNode.data.noteId, node.data.noteId);
+                if (resolvedBranchId) {
+                    node.data.branchId = resolvedBranchId;
+                    branch = froca.getBranch(resolvedBranchId, true);
+                }
+            }
+
+            if (!branch) {
+                console.log(`Node update not possible because branch '${node.data.branchId}' was not found.`);
+                return;
+            }
         }
 
         const title = `${branch.prefix ? `${branch.prefix} - ` : ""}${note.title}`;
@@ -1370,9 +1383,16 @@ export default class NoteTreeWidget extends NoteContextAwareWidget {
         await this.batchUpdate(async () => {
             for (const noteId of refreshCtx.noteIdsToReload) {
                 for (const node of this.getNodesByNoteId(noteId)) {
-                    await node.load(true);
+                    await new Promise<void>((resolve, reject) => {
+                        node.load(true).then(() => {
+                            // children are guaranteed fresh here
+                            refreshCtx.noteIdsToUpdate.add(noteId);
 
-                    refreshCtx.noteIdsToUpdate.add(noteId);
+                            this.updateNode(node)
+                                .then(() => resolve())
+                                .catch(reject);
+                        });
+                    });
                 }
             }
 
@@ -1384,13 +1404,6 @@ export default class NoteTreeWidget extends NoteContextAwareWidget {
                 }
             }
         });
-
-        // for some reason, node update cannot be in the batchUpdate() block (node is not re-rendered)
-        for (const noteId of refreshCtx.noteIdsToUpdate) {
-            for (const node of this.getNodesByNoteId(noteId)) {
-                await this.updateNode(node);
-            }
-        }
     }
 
     async #setActiveNode(activeNotePath: string | null, activeNodeFocused: boolean, movedActiveNode: Fancytree.FancytreeNode | null, parentsOfAddedNodes: Fancytree.FancytreeNode[]) {

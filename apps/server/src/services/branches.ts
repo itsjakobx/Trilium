@@ -28,6 +28,7 @@ function moveBranchToNote(branchToMove: BBranch, targetParentNoteId: string) {
 }
 
 function moveBranchToBranch(branchToMove: BBranch, targetParentBranch: BBranch) {
+    console.log("moveBranchToNote");
     const res = moveBranchToNote(branchToMove, targetParentBranch.noteId);
 
     if (!("success" in res) || !res.success) {

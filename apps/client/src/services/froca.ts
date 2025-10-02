@@ -302,9 +302,10 @@ class FrocaImpl implements Froca {
             if (!silentNotFoundError) {
                 logError(`Not existing branch '${branchId}'`);
             }
-        } else {
-            return this.branches[branchId];
+            return;
         }
+
+        return this.branches[branchId];
     }
 
     async getBranchId(parentNoteId: string, childNoteId: string) {
