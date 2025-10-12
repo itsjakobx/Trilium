@@ -46,7 +46,7 @@ export default function MobileDetailMenu() {
                     items,
                     selectMenuItemHandler: async ({ command }) => {
                         if (command === "insertChildNote") {
-                            note_create.createNote(appContext.tabManager.getActiveContextNotePath() ?? undefined);
+                            note_create.createNoteIntoPath(appContext.tabManager.getActiveContextNotePath() ?? undefined);
                         } else if (command === "delete") {
                             const notePath = appContext.tabManager.getActiveContextNotePath();
                             if (!notePath) {
