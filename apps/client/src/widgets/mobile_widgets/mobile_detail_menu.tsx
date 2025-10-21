@@ -47,8 +47,8 @@ export default function MobileDetailMenu() {
                     selectMenuItemHandler: async ({ command }) => {
                         if (command === "insertChildNote") {
                             note_create.createNote(
-                                CreateNoteTarget.IntoNoteURL,
                                 {
+                                    target: CreateNoteTarget.IntoNoteURL,
                                     parentNoteUrl: appContext.tabManager.getActiveContextNotePath() ?? undefined
                                 } as CreateNoteIntoURLOpts
                             );
