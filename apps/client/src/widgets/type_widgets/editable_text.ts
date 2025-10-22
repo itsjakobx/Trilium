@@ -15,6 +15,7 @@ import { PopupEditor, ClassicEditor, EditorWatchdog, type CKTextEditor, type Men
 import { updateTemplateCache } from "./ckeditor/snippets.js";
 import { CreateNoteAction } from "@triliumnext/commons";
 import note_create from "../../services/note_create.js";
+import type FBranch from "../../entities/fbranch.js";
 
 export type BoxSize = "small" | "medium" | "full";
 
@@ -482,63 +483,36 @@ export default class EditableTextTypeWidget extends AbstractTextTypeWidget {
                 }
             }
 
+            const activate =
+                action === CreateNoteAction.CreateNoteIntoInbox ||
+                action === CreateNoteAction.CreateNoteIntoPath;
+
+            const options = {
+                title,
+                activate,
+                type: noteType,
+                templateNoteId,
+            };
+
+            let actionTask: Promise<{ note: FNote | null; branch: FBranch | undefined; }>;
+
             switch (action) {
-                // --- Create note INTO inbox ---
-                case CreateNoteAction.CreateNoteIntoInbox: {
+                case CreateNoteAction.CreateNoteIntoInbox:
+                case CreateNoteAction.CreateAndLinkNoteIntoInbox:
+                    actionTask = note_create.createNoteIntoInbox(options);
+                    break;
 
-                    const { note } = await note_create.createNoteIntoInbox({
-                        title,
-                        activate: true,
-                        type: noteType,
-                        templateNoteId,
-                    });
-
-                    return note?.getBestNotePathString() ?? "";
-                }
-
-                // --- Create note INTO current path ---
-                case CreateNoteAction.CreateNoteIntoPath: {
-
-                    const { note } = await note_create.createNoteIntoPath(notePath || parentNotePath, {
-                        title,
-                        activate: true,
-                        type: noteType,
-                        templateNoteId,
-                    });
-
-                    return note?.getBestNotePathString() ?? "";
-                }
-
-                // --- Create & link note INTO inbox ---
-                case CreateNoteAction.CreateAndLinkNoteIntoInbox: {
-
-                    const { note } = await note_create.createNoteIntoInbox({
-                        title,
-                        activate: false,
-                        type: noteType,
-                        templateNoteId,
-                    });
-
-                    return note?.getBestNotePathString() ?? "";
-                }
-
-                // --- Create & link note INTO current path ---
-                case CreateNoteAction.CreateAndLinkNoteIntoPath: {
-
-                    const { note } = await note_create.createNoteIntoPath(notePath || parentNotePath, {
-                        title,
-                        activate: false,
-                        type: noteType,
-                        templateNoteId,
-                    });
-
-                    return note?.getBestNotePathString() ?? "";
-                }
+                case CreateNoteAction.CreateNoteIntoPath:
+                case CreateNoteAction.CreateAndLinkNoteIntoPath:
+                    actionTask = note_create.createNoteIntoPath(notePath || parentNotePath, options);
+                    break;
 
                 default:
                     console.warn("Unknown CreateNoteAction:", action);
                     return "";
             }
+            const { note } = await actionTask;
+            return note?.getBestNotePathString() ?? "";
         } catch (err) {
             console.error("Error while creating note from CKEditor:", err);
             return "";
