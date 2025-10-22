@@ -471,11 +471,20 @@ export default class EditableTextTypeWidget extends AbstractTextTypeWidget {
         action: CreateNoteAction
     ): Promise<string> {
         try {
+            const { success, noteType, templateNoteId, notePath } = await note_create.chooseNoteType();
+            if (!success) return "";
+
+            if (notePath) {
+                if (action === CreateNoteAction.CreateNoteIntoInbox) {
+                    action = CreateNoteAction.CreateNoteIntoPath
+                } else if (action === CreateNoteAction.CreateAndLinkNoteIntoInbox) {
+                    action = CreateNoteAction.CreateAndLinkNoteIntoPath
+                }
+            }
+
             switch (action) {
                 // --- Create note INTO inbox ---
                 case CreateNoteAction.CreateNoteIntoInbox: {
-                    const { success, noteType, templateNoteId } = await note_create.chooseNoteType();
-                    if (!success) return "";
 
                     const { note } = await note_create.createNoteIntoInbox({
                         title,
@@ -489,8 +498,6 @@ export default class EditableTextTypeWidget extends AbstractTextTypeWidget {
 
                 // --- Create note INTO current path ---
                 case CreateNoteAction.CreateNoteIntoPath: {
-                    const { success, noteType, templateNoteId, notePath } = await note_create.chooseNoteType();
-                    if (!success) return "";
 
                     const { note } = await note_create.createNoteIntoPath(notePath || parentNotePath, {
                         title,
@@ -504,8 +511,6 @@ export default class EditableTextTypeWidget extends AbstractTextTypeWidget {
 
                 // --- Create & link note INTO inbox ---
                 case CreateNoteAction.CreateAndLinkNoteIntoInbox: {
-                    const { success, noteType, templateNoteId } = await note_create.chooseNoteType();
-                    if (!success) return "";
 
                     const { note } = await note_create.createNoteIntoInbox({
                         title,
@@ -519,8 +524,6 @@ export default class EditableTextTypeWidget extends AbstractTextTypeWidget {
 
                 // --- Create & link note INTO current path ---
                 case CreateNoteAction.CreateAndLinkNoteIntoPath: {
-                    const { success, noteType, templateNoteId, notePath } = await note_create.chooseNoteType();
-                    if (!success) return "";
 
                     const { note } = await note_create.createNoteIntoPath(notePath || parentNotePath, {
                         title,
