@@ -97,9 +97,9 @@ type CreateNoteAtUrlOpts =
     });
 
 // Export aliases CreateNoteLocationOpts specific variants
-export type CreateNoteIntoURLOpts = Extract<CreateNoteAtUrlOpts, { target: CreateNoteTarget.IntoNoteURL }>;
-export type CreateNoteBeforeURLOpts = Extract<CreateNoteAtUrlOpts, { target: CreateNoteTarget.BeforeNoteURL }>;
-export type CreateNoteAfterURLOpts = Extract<CreateNoteAtUrlOpts, { target: CreateNoteTarget.AfterNoteURL }>;
+export type CreateNoteIntoUrlOpts = Extract<CreateNoteAtUrlOpts, { target: CreateNoteTarget.IntoNoteURL }>;
+export type CreateNoteBeforeUrlOpts = Extract<CreateNoteAtUrlOpts, { target: CreateNoteTarget.BeforeNoteURL }>;
+export type CreateNoteAfterUrlOpts = Extract<CreateNoteAtUrlOpts, { target: CreateNoteTarget.AfterNoteURL }>;
 
 export type CreateNoteIntoInboxOpts = Extract<CreateNoteOpts, { target: CreateNoteTarget.IntoInbox }>;
 
@@ -123,15 +123,15 @@ interface DuplicateResponse {
 
 /* We are overloading createNote for each type */
 async function createNote(
-  options: CreateNoteIntoURLOpts
+  options: CreateNoteIntoUrlOpts
 ): Promise<{ note: FNote | null; branch: FBranch | undefined }>;
 
 async function createNote(
-  options: CreateNoteAfterURLOpts
+  options: CreateNoteAfterUrlOpts
 ): Promise<{ note: FNote | null; branch: FBranch | undefined }>;
 
 async function createNote(
-  options: CreateNoteBeforeURLOpts
+  options: CreateNoteBeforeUrlOpts
 ): Promise<{ note: FNote | null; branch: FBranch | undefined }>;
 
 async function createNote(
@@ -160,24 +160,24 @@ async function createNote(
         } as CreateNoteOpts;
 
         if (notePath) {
-            resolvedOptions = resolvedOptions as CreateNoteIntoURLOpts;
+            resolvedOptions = resolvedOptions as CreateNoteIntoUrlOpts;
             resolvedOptions = {
                 ...resolvedOptions,
                 target: CreateNoteTarget.IntoNoteURL,
                 parentNoteUrl: notePath,
-            } as CreateNoteIntoURLOpts;
+            } as CreateNoteIntoUrlOpts;
         }
     }
 
     switch (resolvedOptions.target) {
         case CreateNoteTarget.IntoNoteURL:
-            return await createNoteIntoNote(resolvedOptions as CreateNoteIntoURLOpts);
+            return await createNoteIntoNote(resolvedOptions as CreateNoteIntoUrlOpts);
 
         case CreateNoteTarget.BeforeNoteURL:
-            return await createNoteBeforeNote(resolvedOptions as CreateNoteBeforeURLOpts);
+            return await createNoteBeforeNote(resolvedOptions as CreateNoteBeforeUrlOpts);
 
         case CreateNoteTarget.AfterNoteURL:
-            return await createNoteAfterNote(resolvedOptions as CreateNoteAfterURLOpts);
+            return await createNoteAfterNote(resolvedOptions as CreateNoteAfterUrlOpts);
 
         case CreateNoteTarget.IntoInbox:
             return await createNoteIntoInbox(resolvedOptions as CreateNoteIntoInboxOpts);
@@ -277,19 +277,19 @@ async function createNoteAtNote(
 // Small wrapper functions for @see createNoteAtNote, using it a certain way to
 // remove code duplication
 async function createNoteIntoNote(
-    options: CreateNoteIntoURLOpts
+    options: CreateNoteIntoUrlOpts
 ): Promise<{ note: FNote | null; branch: FBranch | undefined }> {
     return createNoteAtNote("into", {...options} as CreateNoteAtUrlOpts);
 }
 
 async function createNoteBeforeNote(
-    options: CreateNoteBeforeURLOpts
+    options: CreateNoteBeforeUrlOpts
 ): Promise<{ note: FNote | null; branch: FBranch | undefined }> {
     return createNoteAtNote("before", {...options} as CreateNoteAtUrlOpts);
 }
 
 async function createNoteAfterNote(
-    options: CreateNoteAfterURLOpts
+    options: CreateNoteAfterUrlOpts
 ): Promise<{ note: FNote | null; branch: FBranch | undefined }> {
     return createNoteAtNote("after", {...options} as CreateNoteAtUrlOpts);
 }
@@ -320,7 +320,7 @@ async function createNoteIntoInbox(
         {
             ...options,
             parentNoteUrl: inboxNote.noteId,
-        } as CreateNoteIntoURLOpts
+        } as CreateNoteIntoUrlOpts
     );
 
     return result;
