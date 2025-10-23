@@ -105,7 +105,7 @@ type CreateNoteAtUrlOpts =
 export type CreateNoteIntoURLOpts = Extract<CreateNoteAtUrlOpts, { target: CreateNoteTarget.IntoNoteURL }>;
 export type CreateNoteBeforeURLOpts = Extract<CreateNoteAtUrlOpts, { target: CreateNoteTarget.BeforeNoteURL }>;
 export type CreateNoteAfterURLOpts = Extract<CreateNoteAtUrlOpts, { target: CreateNoteTarget.AfterNoteURL }>;
-export type CreateNoteIntoInboxURLOpts = Extract<CreateNoteAtUrlOpts, { target: CreateNoteTarget.IntoInbox }>;
+export type CreateNoteIntoInboxOpts = Extract<CreateNoteAtUrlOpts, { target: CreateNoteTarget.IntoInbox }>;
 
 export enum CreateNoteTarget {
     IntoNoteURL,
@@ -139,7 +139,7 @@ async function createNote(
 ): Promise<{ note: FNote | null; branch: FBranch | undefined }>;
 
 async function createNote(
-  options: CreateNoteIntoInboxURLOpts
+  options: CreateNoteIntoInboxOpts
 ): Promise<{ note: FNote | null; branch: FBranch | undefined }>;
 
 async function createNote(
@@ -184,7 +184,7 @@ async function createNote(
             return await createNoteAfterNote(resolvedOptions as CreateNoteAfterURLOpts);
 
         case CreateNoteTarget.IntoInbox:
-            return await createNoteIntoInbox(resolvedOptions as CreateNoteIntoInboxURLOpts);
+            return await createNoteIntoInbox(resolvedOptions as CreateNoteIntoInboxOpts);
 
         default: {
             console.warn("[createNote] Unknown target:", options.target, resolvedOptions);
@@ -306,7 +306,7 @@ async function createNoteAfterNote(
  * Resolves with the created note and its branch, or `{ note: null, branch: undefined }` if the inbox is missing.
  */
 async function createNoteIntoInbox(
-    options: CreateNoteIntoInboxURLOpts
+    options: CreateNoteIntoInboxOpts
 ): Promise<{ note: FNote | null; branch: FBranch | undefined }> {
     const inboxNote = await dateNoteService.getInboxNote();
     if (!inboxNote) {
