@@ -62,43 +62,50 @@ type CreateNoteEntity = {
     activate?: boolean;
     focus?: "title" | "content";
     textEditor?: CKTextEditor;
-}
+};
 
+// Controls "type selection" behavior — mutually exclusive modes
 export type CreateNoteOpts =
   | (CreateNoteEntity & {
       promptForType: true;
-      type?: never;
+      type?: never; // must not supply `type` if prompting user
     })
   | (CreateNoteEntity & {
       promptForType?: false;
-      type?: string;
+      type?: string; // allowed when not prompting
     });
 
 /*
- * For creating a note in a specific path. At is the broader category (hypernym)
- * of "into" and "as siblings". It is not exported because it only exists, to
- * have its legal values propagated to its children (types inheriting from it).
- */
-type CreateNoteAtUrlOpts = CreateNoteOpts & {
-    // `Url` means either parentNotePath or parentNoteId.
-    // The vocabulary  is inspired by its loose semantics of getNoteIdFromUrl.
-    parentNoteUrl: string;
-    /*
-     * targetBranchId disambiguates the position for cloned notes. This is a
-     * concern whenever we are given a note URL.
-     */
-    targetBranchId: string;
-}
+ * Unify all URL/inbox variants under a single discriminated union
+ * Internal type for creating a note in a specific path
+ * Exposed via CreateNote***URLOpts aliases
+*/
+type CreateNoteAtUrlOpts =
+  | (CreateNoteOpts & {
+      target: CreateNoteTarget.IntoNoteURL;
+      parentNoteUrl: string;
+      targetBranchId: string;
+    })
+  | (CreateNoteOpts & {
+      target: CreateNoteTarget.AfterNoteURL;
+      parentNoteUrl: string;
+      targetBranchId: string;
+    })
+  | (CreateNoteOpts & {
+      target: CreateNoteTarget.BeforeNoteURL;
+      parentNoteUrl: string;
+      targetBranchId: string;
+    })
+  | (CreateNoteOpts & {
+      target: CreateNoteTarget.IntoInbox;
+      parentNoteUrl?: never;
+    });
 
-export type CreateNoteIntoURLOpts = CreateNoteAtUrlOpts;
-
-type CreateNoteSiblingURLOpts = CreateNoteAtUrlOpts;
-export type CreateNoteBeforeURLOpts = CreateNoteSiblingURLOpts;
-export type CreateNoteAfterURLOpts = CreateNoteSiblingURLOpts;
-
-export type CreateNoteIntoInboxURLOpts = CreateNoteOpts & {
-    parentNoteUrl?: never;
-}
+// Export aliases CreateNoteLocationOpts specific variants
+export type CreateNoteIntoURLOpts = Extract<CreateNoteAtUrlOpts, { target: CreateNoteTarget.IntoNoteURL }>;
+export type CreateNoteBeforeURLOpts = Extract<CreateNoteAtUrlOpts, { target: CreateNoteTarget.BeforeNoteURL }>;
+export type CreateNoteAfterURLOpts = Extract<CreateNoteAtUrlOpts, { target: CreateNoteTarget.AfterNoteURL }>;
+export type CreateNoteIntoInboxURLOpts = Extract<CreateNoteAtUrlOpts, { target: CreateNoteTarget.IntoInbox }>;
 
 export enum CreateNoteTarget {
     IntoNoteURL,
