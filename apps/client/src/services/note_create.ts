@@ -101,7 +101,7 @@ export type CreateNoteIntoUrlOpts = Extract<CreateNoteAtUrlOpts, { target: Creat
 export type CreateNoteBeforeUrlOpts = Extract<CreateNoteAtUrlOpts, { target: CreateNoteTarget.BeforeNoteURL }>;
 export type CreateNoteAfterUrlOpts = Extract<CreateNoteAtUrlOpts, { target: CreateNoteTarget.AfterNoteURL }>;
 
-export type CreateNoteIntoInboxOpts = Extract<CreateNoteOpts, { target: CreateNoteTarget.IntoInbox }>;
+export type CreateNoteIntoInboxOpts = CreateNoteOpts;
 
 export enum CreateNoteTarget {
     IntoNoteURL,
