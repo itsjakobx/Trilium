@@ -39,9 +39,8 @@ import dateNoteService from "../services/date_notes.js";
  *     |
  *     +-- CreateNoteAtUrlOpts
  *     |   +-- CreateNoteIntoURLOpts
- *     |   \-- CreateNoteSiblingURLOpts
- *     |       +-- CreateNoteBeforeURLOpts
- *     |       \-- CreateNoteAfterURLOpts
+ *     |   +-- CreateNoteBeforeURLOpts
+ *     |   \-- CreateNoteAfterURLOpts
  *     |
  *     \-- CreateNoteIntoInboxURLOpts
  */
@@ -95,17 +94,14 @@ type CreateNoteAtUrlOpts =
       target: CreateNoteTarget.BeforeNoteURL;
       parentNoteUrl: string;
       targetBranchId: string;
-    })
-  | (CreateNoteOpts & {
-      target: CreateNoteTarget.IntoInbox;
-      parentNoteUrl?: never;
     });
 
 // Export aliases CreateNoteLocationOpts specific variants
 export type CreateNoteIntoURLOpts = Extract<CreateNoteAtUrlOpts, { target: CreateNoteTarget.IntoNoteURL }>;
 export type CreateNoteBeforeURLOpts = Extract<CreateNoteAtUrlOpts, { target: CreateNoteTarget.BeforeNoteURL }>;
 export type CreateNoteAfterURLOpts = Extract<CreateNoteAtUrlOpts, { target: CreateNoteTarget.AfterNoteURL }>;
-export type CreateNoteIntoInboxOpts = Extract<CreateNoteAtUrlOpts, { target: CreateNoteTarget.IntoInbox }>;
+
+export type CreateNoteIntoInboxOpts = Extract<CreateNoteOpts, { target: CreateNoteTarget.IntoInbox }>;
 
 export enum CreateNoteTarget {
     IntoNoteURL,
