@@ -9,7 +9,7 @@ import treeService from "../services/tree.js";
 import utils, { openInReusableSplit } from "../services/utils.js";
 import appContext, { type CommandListenerData } from "./app_context.js";
 import Component from "./component.js";
-import noteCreateService, { CreateNoteIntoURLOpts, CreateNoteTarget } from "../services/note_create.js";
+import noteCreateService, { CreateNoteIntoUrlOpts, CreateNoteTarget } from "../services/note_create.js";
 
 export default class RootCommandExecutor extends Component {
     editReadOnlyNoteCommand() {
@@ -263,7 +263,7 @@ export default class RootCommandExecutor extends Component {
                         messages: [],
                         title: "New AI Chat"
                     }),
-                } as CreateNoteIntoURLOpts
+                } as CreateNoteIntoUrlOpts
             );
 
             if (!result.note) {
