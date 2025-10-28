@@ -9,7 +9,7 @@ import treeService from "../services/tree.js";
 import utils, { openInReusableSplit } from "../services/utils.js";
 import appContext, { type CommandListenerData } from "./app_context.js";
 import Component from "./component.js";
-import noteCreateService, { CreateNoteIntoUrlOpts, CreateNoteTarget } from "../services/note_create.js";
+import noteCreateService, { CreateNoteIntoUrlOpts } from "../services/note_create.js";
 
 export default class RootCommandExecutor extends Component {
     editReadOnlyNoteCommand() {
@@ -256,7 +256,7 @@ export default class RootCommandExecutor extends Component {
 
             const result = await noteCreateService.createNote(
                 {
-                    target: CreateNoteTarget.IntoNoteURL,
+                    target: "into",
                     title: "New AI Chat",
                     type: "aiChat",
                     content: JSON.stringify({
