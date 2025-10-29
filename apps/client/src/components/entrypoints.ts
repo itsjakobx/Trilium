@@ -159,7 +159,24 @@ export default class Entrypoints extends Component {
         this.openInWindowCommand({ notePath: "", hoistedNoteId: "root" });
     }
 
+    /**
+     * Opens today's note in the current tab (replaces current content)
+     */
     async openTodayNoteCommand() {
+        const todayNote = await dateNoteService.getTodayNote();
+        if (!todayNote) {
+            console.warn("Missing today note.");
+            return;
+        }
+
+        const hoistedNoteId = appContext.tabManager.getActiveContext()?.hoistedNoteId;
+        await appContext.tabManager.openInSameTab(todayNote.noteId, hoistedNoteId);
+    }
+
+    /**
+     * Opens today's note in a new tab
+     */
+    async openTodayNoteInNewTabCommand() {
         const todayNote = await dateNoteService.getTodayNote();
         if (!todayNote) {
             console.warn("Missing today note.");

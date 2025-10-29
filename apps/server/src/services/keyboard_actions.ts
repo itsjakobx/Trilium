@@ -50,6 +50,14 @@ function getDefaultKeyboardActions() {
             scope: "window"
         },
         {
+            actionName: "openTodayNoteInNewTab",
+            friendlyName: t("hidden-subtree.open-today-journal-note-in-new-tab-title"),
+            iconClass: "bx bx-calendar",
+            defaultShortcuts: [],
+            description: t("hidden-subtree.open-today-journal-note-in-new-tab-title"),
+            scope: "window"
+        },
+        {
             actionName: "commandPalette",
             friendlyName: t("keyboard_action_names.command-palette"),
             defaultShortcuts: ["CommandOrControl+Shift+J"],
