@@ -1,5 +1,10 @@
 import type { CKTextEditor } from "@triliumnext/ckeditor5";
 import type CodeMirror from "@triliumnext/codemirror";
+import { StartupChecks } from "./startup_checks.js";
+import type { CreateNoteOpts, CreateNoteWithUrlOpts } from "../services/note_create.js";
+import { ColumnComponent } from "tabulator-tables";
+import { ChooseNoteTypeCallback } from "../widgets/dialogs/note_type_chooser.jsx";
+import type RootContainer from "../widgets/containers/root_container.js";
 import { SqlExecuteResults } from "@triliumnext/commons";
 import type { NativeImage, TouchBar } from "electron";
 import { ColumnComponent } from "tabulator-tables";
@@ -361,8 +366,7 @@ export type CommandMappings = {
 
     // Table view
     addNewRow: CommandData & {
-        customOpts: CreateNoteOpts;
-        parentNotePath?: string;
+        customOpts?: CreateNoteWithUrlOpts;
     };
     addNewTableColumn: CommandData & {
         columnToEdit?: ColumnComponent;
