@@ -120,7 +120,7 @@ function loginSync(req: Request) {
     };
 }
 
-function loginToProtectedSession(req: Request) {
+async function loginToProtectedSession(req: Request) {
     const password = req.body.password;
 
     if (!passwordEncryptionService.verifyPassword(password)) {
@@ -130,7 +130,7 @@ function loginToProtectedSession(req: Request) {
         };
     }
 
-    const decryptedDataKey = passwordEncryptionService.getDataKey(password);
+    const decryptedDataKey = await passwordEncryptionService.getDataKey(password);
     if (!decryptedDataKey) {
         return {
             success: false,
@@ -147,6 +147,21 @@ function loginToProtectedSession(req: Request) {
     return {
         success: true
     };
+}
+
+function loginToProtectedSessionHandler(req: Request) {
+    // Call the async function manually
+    loginToProtectedSession(req)
+        .then((result) => {
+            // assuming you want to send response via ws or event
+            // or you can attach it to some shared response handler
+        })
+        .catch((err) => {
+            console.error("Error in loginToProtectedSession:", err);
+        });
+
+    // Return synchronously (expected by apiRoute)
+    return;
 }
 
 function logoutFromProtectedSession() {
@@ -194,6 +209,7 @@ function verifyTOTP(submittedTotpToken: string) {
 export default {
     loginSync,
     loginToProtectedSession,
+    loginToProtectedSessionHandler,
     logoutFromProtectedSession,
     touchProtectedSession,
     token

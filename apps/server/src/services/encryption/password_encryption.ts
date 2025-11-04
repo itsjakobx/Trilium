@@ -15,20 +15,20 @@ function verifyPassword(password: string) {
     return givenPasswordHash === dbPasswordHash;
 }
 
-function setDataKey(password: string, plainTextDataKey: string | Buffer) {
+async function setDataKey(password: string, plainTextDataKey: string | Buffer) {
     const passwordDerivedKey = myScryptService.getPasswordDerivedKey(password);
 
-    const newEncryptedDataKey = dataEncryptionService.encrypt(passwordDerivedKey, plainTextDataKey);
+    const newEncryptedDataKey = await dataEncryptionService.encrypt(passwordDerivedKey, plainTextDataKey);
 
     optionService.setOption("encryptedDataKey", newEncryptedDataKey);
 }
 
-function getDataKey(password: string) {
+async function getDataKey(password: string) {
     const passwordDerivedKey = myScryptService.getPasswordDerivedKey(password);
 
     const encryptedDataKey = optionService.getOption("encryptedDataKey");
 
-    const decryptedDataKey = dataEncryptionService.decrypt(passwordDerivedKey, encryptedDataKey);
+    const decryptedDataKey = await dataEncryptionService.decrypt(passwordDerivedKey, encryptedDataKey);
 
     return decryptedDataKey;
 }

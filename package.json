@@ -122,5 +122,8 @@
       "macos-alias",
       "utf-8-validate"
     ]
+  },
+  "dependencies": {
+    "libsodium-wrappers": "0.7.15"
   }
 }

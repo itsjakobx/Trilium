@@ -20,7 +20,7 @@ export function isProtectedSessionAvailable() {
     return !!dataKey;
 }
 
-function encrypt(plainText: string | Buffer) {
+async function encrypt(plainText: string | Buffer): Promise<string | null> {
     const dataKey = getDataKey();
     if (plainText === null || dataKey === null) {
         return null;
@@ -29,13 +29,13 @@ function encrypt(plainText: string | Buffer) {
     return dataEncryptionService.encrypt(dataKey, plainText);
 }
 
-function decrypt(cipherText: string | Buffer): Buffer | null {
+async function decrypt(cipherText: string | Buffer): Promise<Buffer | null> {
     const dataKey = getDataKey();
     if (cipherText === null || dataKey === null) {
         return null;
     }
 
-    return dataEncryptionService.decrypt(dataKey, cipherText) || null;
+    return await dataEncryptionService.decrypt(dataKey, cipherText) || null;
 }
 
 function decryptString(cipherText: string): string | null {

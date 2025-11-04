@@ -265,7 +265,7 @@ function register(app: express.Application) {
 
     route(PST, "/api/login/sync", [loginRateLimiter], loginApiRoute.loginSync, apiResultHandler);
     // this is for entering protected mode so user has to be already logged-in (that's the reason we don't require username)
-    apiRoute(PST, "/api/login/protected", loginApiRoute.loginToProtectedSession);
+    apiRoute(PST, "/api/login/protected", loginApiRoute.loginToProtectedSessionHandler);
     apiRoute(PST, "/api/login/protected/touch", loginApiRoute.touchProtectedSession);
     apiRoute(PST, "/api/logout/protected", loginApiRoute.logoutFromProtectedSession);
 

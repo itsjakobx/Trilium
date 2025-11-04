@@ -21,8 +21,8 @@ function changePassword(currentPassword: string, newPassword: string): ChangePas
         };
     }
 
-    sql.transactional(() => {
-        const decryptedDataKey = passwordEncryptionService.getDataKey(currentPassword);
+    sql.transactional(async () => {
+        const decryptedDataKey = await passwordEncryptionService.getDataKey(currentPassword);
 
         optionService.setOption("passwordVerificationSalt", randomSecureToken(32));
         optionService.setOption("passwordDerivedKeySalt", randomSecureToken(32));
