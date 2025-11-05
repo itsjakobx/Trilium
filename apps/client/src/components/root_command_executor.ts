@@ -9,7 +9,7 @@ import treeService from "../services/tree.js";
 import utils, { openInReusableSplit } from "../services/utils.js";
 import appContext, { type CommandListenerData } from "./app_context.js";
 import Component from "./component.js";
-import noteCreateService, { CreateNoteWithUrlOpts } from "../services/note_create.js";
+import noteCreateService from "../services/note_create.js";
 
 export default class RootCommandExecutor extends Component {
     editReadOnlyNoteCommand() {
