@@ -497,48 +497,45 @@ export default class EditableTextTypeWidget extends AbstractTextTypeWidget {
         parentNotePath: string | undefined,
         action: CreateNoteAction
     ): Promise<string> {
-        try {
-            switch (action) {
-                // --- Create & link note INTO inbox ---
-                case CreateNoteAction.CreateAndLinkNote: {
-                    const { note } = await noteCreateService.createNote(
-                        {
-                            target: "inbox",
-                            title,
-                            activate: false,
-                            promptForType: true,
-                        }
-                    );
-
-                    return note?.getBestNotePathString() ?? "";
-                }
-
-                // --- Create & link note INTO current path ---
-                case CreateNoteAction.CreateAndLinkChildNote: {
-                    if (!parentNotePath) {
-                        console.error("Cannot create note: parentNotePath is undefined.");
-                        return "";
+        switch (action) {
+            case CreateNoteAction.CreateAndLinkNote: {
+                const { note } = await noteCreateService.createNote(
+                    {
+                        target: "inbox",
+                        title,
+                        activate: false,
+                        promptForType: true,
                     }
-                    const { note } = await noteCreateService.createNote(
-                        {
-                            target: "into",
-                            parentNoteUrl: parentNotePath,
-                            title,
-                            activate: false,
-                            promptForType: true,
-                        }
-                    );
+                );
 
-                    return note?.getBestNotePathString() ?? "";
-                }
-
-                default:
-                    console.warn("impossible CreateNoteAction state:", action);
-                    return "";
+                return note?.getBestNotePathString() ?? "";
             }
-        } catch (err) {
-            console.error("Error while creating note from CKEditor:", err);
-            return "";
+
+            case CreateNoteAction.CreateAndLinkChildNote: {
+                if (!parentNotePath) {
+                    console.error("Cannot create note: parentNotePath is undefined.");
+                    return "";
+                }
+                const { note } = await noteCreateService.createNote(
+                    {
+                        target: "into",
+                        parentNoteUrl: parentNotePath,
+                        title,
+                        activate: false,
+                        promptForType: true,
+                    }
+                );
+
+                return note?.getBestNotePathString() ?? "";
+            }
+
+            // We always create and Link notes in the CkEditor. Never just
+            // create.
+            case CreateNoteAction.CreateNote:
+            case CreateNoteAction.CreateChildNote:
+            default:
+                console.warn("impossible CreateNoteAction state:", action);
+                return "";
         }
     }
 
