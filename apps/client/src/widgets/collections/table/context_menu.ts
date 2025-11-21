@@ -181,7 +181,7 @@ export function showRowContextMenu(parentComponent: Component, e: MouseEvent, ro
                 enabled: !sorters.length,
                 handler: () => parentComponent?.triggerCommand("addNewRow", {
                     customOpts: {
-                        parentNoteUrl: parentNoteId,
+                        parentNoteLink: parentNoteId,
                         target: "before",
                         targetBranchId: rowData.branchId,
                     }
@@ -198,7 +198,7 @@ export function showRowContextMenu(parentComponent: Component, e: MouseEvent, ro
                     }
                     parentComponent?.triggerCommand("addNewRow", {
                         customOpts: {
-                            parentNoteUrl: note.noteId,
+                            parentNoteLink: note.noteId,
                             target: "after",
                             targetBranchId: branchId,
                         }
@@ -211,7 +211,7 @@ export function showRowContextMenu(parentComponent: Component, e: MouseEvent, ro
                 enabled: !sorters.length,
                 handler: () => parentComponent?.triggerCommand("addNewRow", {
                     customOpts: {
-                        parentNoteUrl: parentNoteId,
+                        parentNoteLink: parentNoteId,
                         target: "after",
                         targetBranchId: rowData.branchId,
                     }

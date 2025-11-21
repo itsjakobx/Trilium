@@ -432,7 +432,7 @@ export default class NoteDetailWidget extends NoteContextAwareWidget {
             noteCreateService.createNote(
                 {
                     target: "into",
-                    parentNoteUrl: parentNotePath,
+                    parentNoteLink: parentNotePath,
                     isProtected: note.isProtected,
                     saveSelection: true,
                     textEditor: await this.noteContext.getTextEditor()
