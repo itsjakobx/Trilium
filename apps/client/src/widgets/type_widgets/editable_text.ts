@@ -497,46 +497,13 @@ export default class EditableTextTypeWidget extends AbstractTextTypeWidget {
         parentNotePath: string | undefined,
         action: CreateNoteAction
     ): Promise<string> {
-        switch (action) {
-            case CreateNoteAction.CreateAndLinkNote: {
-                const { note } = await noteCreateService.createNote(
-                    {
-                        target: "inbox",
-                        title,
-                        activate: false,
-                        promptForType: true,
-                    }
-                );
-
-                return note?.getBestNotePathString() ?? "";
-            }
-
-            case CreateNoteAction.CreateAndLinkChildNote: {
-                if (!parentNotePath) {
-                    console.error("Cannot create note: parentNotePath is undefined.");
-                    return "";
-                }
-                const { note } = await noteCreateService.createNote(
-                    {
-                        target: "into",
-                        parentNoteUrl: parentNotePath,
-                        title,
-                        activate: false,
-                        promptForType: true,
-                    }
-                );
-
-                return note?.getBestNotePathString() ?? "";
-            }
-
-            // We always create and Link notes in the CkEditor. Never just
-            // create.
-            case CreateNoteAction.CreateNote:
-            case CreateNoteAction.CreateChildNote:
-            default:
-                console.warn("impossible CreateNoteAction state:", action);
-                return "";
-        }
+        const { note }= await noteCreateService.createNoteFromAction(
+            action,
+            true,
+            title,
+            parentNotePath,
+        )
+        return note?.getBestNotePathString() ?? "";
     }
 
     async refreshIncludedNoteEvent({ noteId }: EventData<"refreshIncludedNote">) {
