@@ -46,7 +46,7 @@ export default class RootCommandExecutor extends Component {
     }
 
     async searchInSubtreeCommand({ notePath }: CommandListenerData<"searchInSubtree">) {
-        const noteId = treeService.getNoteIdFromUrl(notePath);
+        const noteId = treeService.getNoteIdFromLink(notePath);
 
         this.searchNotesCommand({ ancestorNoteId: noteId });
     }
@@ -256,7 +256,7 @@ export default class RootCommandExecutor extends Component {
 
             const result = await noteCreateService.createNote(
                 {
-                    parentNoteUrl: rootNoteId,
+                    parentNoteLink: rootNoteId,
                     target: "into",
                     title: "New AI Chat",
                     type: "aiChat",

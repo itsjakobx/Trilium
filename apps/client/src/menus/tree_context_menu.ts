@@ -293,7 +293,7 @@ export default class TreeContextMenu implements SelectMenuItemEventListener<Tree
             noteCreateService.createNote(
                 {
                     target: "after",
-                    parentNoteUrl: parentNotePath,
+                    parentNoteLink: parentNotePath,
                     targetBranchId: this.node.data.branchId,
                     type: type,
                     isProtected: isProtected,
@@ -307,7 +307,7 @@ export default class TreeContextMenu implements SelectMenuItemEventListener<Tree
             noteCreateService.createNote(
                 {
                     target: "into",
-                    parentNoteUrl: parentNotePath,
+                    parentNoteLink: parentNotePath,
                     type: type,
                     isProtected: this.node.data.isProtected,
                     templateNoteId: templateNoteId,
