@@ -189,6 +189,39 @@ describe("special_notes (core, real DB)", () => {
             const result = specialNotes.getInboxNote("2026-05-29");
             expect(result).toBe(workspace);
         });
+
+        it("places a capture under the workspace calendar when hoisted into that workspace", () => {
+            const { workspace, calendar } = getContext().init(() => {
+                const workspace = noteService.createNewNote({
+                    parentNoteId: "root",
+                    title: "workspace-for-inbox-calendar",
+                    content: "",
+                    type: "text"
+                }).note;
+                workspace.setLabel("workspace");
+
+                const calendar = noteService.createNewNote({
+                    parentNoteId: workspace.noteId,
+                    title: "workspace-journal",
+                    content: "",
+                    type: "text"
+                }).note;
+                calendar.setLabel("workspaceCalendarRoot");
+
+                return { workspace, calendar };
+            });
+
+            getContext().init(() => {
+                getContext().set("hoistedNoteId", workspace.noteId);
+
+                expect(specialNotes.getInboxTarget()).toMatchObject({ kind: "dayNote" });
+
+                const inbox = specialNotes.getInboxNote("2026-09-15");
+                expect(inbox.hasAncestor(calendar.noteId)).toBe(true);
+                expect(inbox.getParentNotes().some((parent) => parent.noteId === workspace.noteId))
+                    .toBe(false);
+            });
+        });
     });
 
     describe("getInboxTarget", () => {
@@ -225,7 +258,7 @@ describe("special_notes (core, real DB)", () => {
             expect(Object.keys(becca.notes).length).toBe(noteCountBefore);
         });
 
-        it("distinguishes the workspace inbox, a plain inbox and the workspace root", () => {
+        it("distinguishes the workspace inbox, a plain inbox, the workspace calendar and the workspace root", () => {
             const workspaceInbox = becca.getNoteOrThrow("root").getChildNotes()[0];
             const plainInbox = becca.getNoteOrThrow("root").getChildNotes()[1];
 
@@ -240,6 +273,12 @@ describe("special_notes (core, real DB)", () => {
             const withNeither = makeWorkspaceStub({});
             vi.spyOn(hoistedNoteService, "getWorkspaceNote").mockReturnValue(withNeither as any);
             expect(specialNotes.getInboxTarget()).toMatchObject({ kind: "workspaceRoot", noteId: withNeither.noteId });
+
+            const withCalendar = makeWorkspaceStub({
+                "#workspaceCalendarRoot": becca.getNoteOrThrow("root").getChildNotes()[0]
+            });
+            vi.spyOn(hoistedNoteService, "getWorkspaceNote").mockReturnValue(withCalendar as any);
+            expect(specialNotes.getInboxTarget()).toMatchObject({ kind: "dayNote" });
         });
     });
 

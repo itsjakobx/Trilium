@@ -42,6 +42,11 @@ function resolveInboxTarget(): { kind: InboxTargetKind; note?: BNote } {
             return { kind: "inbox", note: inbox };
         }
 
+        // Capture into today's note when this workspace has its own journal.
+        if (workspaceNote.searchNoteInSubtree("#workspaceCalendarRoot")) {
+            return { kind: "dayNote" };
+        }
+
         return { kind: "workspaceRoot", note: workspaceNote };
     }
 

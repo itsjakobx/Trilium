@@ -26,4 +26,5 @@ When a new note is created while hoisted in a workspace, the location is determi
 
 *   A note carrying the `#workspaceInbox` label in that workspace.
 *   A note carrying the `#inbox` within that workspace.
+*   Today's [day note](../../Advanced%20Usage/Advanced%20Showcases/Day%20Notes.md), if the workspace has a `#workspaceCalendarRoot`.
 *   The workspace root note itself.
