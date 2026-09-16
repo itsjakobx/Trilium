@@ -18,7 +18,7 @@ For bulleted and numbered lists, it's possible to configure an alternative marke
 *   To create a blank line within a list item, press <kbd>Shift</kbd>+<kbd>Enter</kbd>.
 *   To exit out of the list, press <kbd>Enter</kbd> twice.
 *   To merge two lists, simply delete the gap between them.
-*   To create nested lists, simply use the <img src="7_Lists_image.png" width="17" height="14"> button (see _Indentation_ in <a class="reference-link" href="Other%20features.md">Other features</a>) or the <kbd>Tab</kbd> key. To decrease the nesting level for the current element, press <kbd>Shift</kbd>+<kbd>Tab</kbd>.
+*   To create nested lists, simply use the <img src="7_Lists_image.png" width="17" height="14"> button (see _Indentation_ in <a class="reference-link" href="Other%20features.md">Other features</a>) or the <kbd>Tab</kbd> key. To decrease the nesting level for the current element, press <kbd>Shift</kbd>+<kbd>Tab</kbd>. An item that already has text keeps its list type when indented or outdented; an empty item takes the type of the list it joins. <kbd>Tab</kbd> still nests the current item under the one above even if they are different list types.
 
 ## Headings, code blocks within lists
 

@@ -78,6 +78,24 @@ describe("ListTypeAutoformat", () => {
             editor.execute("numberedList");
             expect(listTypes(editor)).toEqual([ "numbered", "numbered", "numbered" ]);
         });
+
+        it("copies list type from the previous sibling when outdenting a nested item", async () => {
+            const editor = await createTestEditor([ Essentials, Paragraph, List ]);
+            setModelData(editor.model,
+                '<paragraph listIndent="0" listItemId="a" listType="bulleted">A</paragraph>' +
+                '<paragraph listIndent="1" listItemId="b" listType="numbered">[]B</paragraph>');
+            editor.execute("outdentList");
+            expect(listTypes(editor)).toEqual([ "bulleted", "bulleted" ]);
+            expect(getBlock(editor, 1).getAttribute("listIndent")).toBe(0);
+        });
+
+        it("disables indentList when the previous sibling is a different list type", async () => {
+            const editor = await createTestEditor([ Essentials, Paragraph, List ]);
+            setModelData(editor.model,
+                '<paragraph listIndent="0" listItemId="a" listType="bulleted">A</paragraph>' +
+                '<paragraph listIndent="0" listItemId="b" listType="numbered">[]B</paragraph>');
+            expect(editor.commands.get("indentList")?.isEnabled).toBe(false);
+        });
     });
 
     describe("with the plugin", () => {
@@ -444,6 +462,180 @@ describe("ListTypeAutoformat", () => {
             expect(getBlock(editor, 1).hasAttribute("listItemId")).toBe(false);
             expect(listTypes(editor)[0]).toBe("bulleted");
             expect(listTypes(editor)[2]).toBe("bulleted");
+        });
+    });
+
+    describe("outdentList", () => {
+        let editor: ClassicEditor;
+
+        beforeEach(async () => {
+            editor = await createEditor();
+        });
+
+        it("keeps the type of a nested item that already has content", () => {
+            setModelData(editor.model,
+                "<paragraph>intro</paragraph>" +
+                '<paragraph listIndent="0" listItemId="a" listType="bulleted">A</paragraph>' +
+                '<paragraph listIndent="1" listItemId="b" listType="numbered">[]B</paragraph>');
+            editor.execute("outdentList");
+
+            expect(listTypes(editor)).toEqual([ undefined, "bulleted", "numbered" ]);
+            expect(getBlock(editor, 2).getAttribute("listIndent")).toBe(0);
+        });
+
+        it("keeps a to-do item's type when it already has content", () => {
+            setModelData(editor.model,
+                '<paragraph listIndent="0" listItemId="a" listType="bulleted">A</paragraph>' +
+                '<paragraph listIndent="1" listItemId="b" listType="todo">[]Task</paragraph>');
+            editor.execute("outdentList");
+
+            expect(listTypes(editor)).toEqual([ "bulleted", "todo" ]);
+        });
+
+        it("lets an empty nested item take the type of the list it joins", () => {
+            setModelData(editor.model,
+                '<paragraph listIndent="0" listItemId="a" listType="bulleted">A</paragraph>' +
+                '<paragraph listIndent="1" listItemId="b" listType="numbered">[]</paragraph>');
+            editor.execute("outdentList");
+
+            expect(listTypes(editor)).toEqual([ "bulleted", "bulleted" ]);
+            expect(getBlock(editor, 1).getAttribute("listIndent")).toBe(0);
+        });
+
+        it("lets an empty nested item adapt when the whole list is empty", () => {
+            setModelData(editor.model,
+                '<paragraph listIndent="0" listItemId="a" listType="bulleted"></paragraph>' +
+                '<paragraph listIndent="1" listItemId="b" listType="numbered">[]</paragraph>');
+            editor.execute("outdentList");
+
+            expect(listTypes(editor)).toEqual([ "bulleted", "bulleted" ]);
+        });
+
+        it("keeps type on every block of a contentful multi-block item", () => {
+            setModelData(editor.model,
+                '<paragraph listIndent="0" listItemId="a" listType="bulleted">A</paragraph>' +
+                '<paragraph listIndent="1" listItemId="b" listType="numbered">[]</paragraph>' +
+                '<paragraph listIndent="1" listItemId="b" listType="numbered">Second</paragraph>');
+            editor.execute("outdentList");
+
+            expect(listTypes(editor)).toEqual([ "bulleted", "numbered", "numbered" ]);
+            expect(getBlock(editor, 1).getAttribute("listItemId"))
+                .toBe(getBlock(editor, 2).getAttribute("listItemId"));
+        });
+
+        it("keeps a nested child's type when its parent is outdented", () => {
+            setModelData(editor.model,
+                '<paragraph listIndent="0" listItemId="a" listType="bulleted">A</paragraph>' +
+                '<paragraph listIndent="1" listItemId="b" listType="numbered">[]B</paragraph>' +
+                '<paragraph listIndent="2" listItemId="c" listType="todo">C</paragraph>');
+            editor.execute("outdentList");
+
+            expect(listTypes(editor)).toEqual([ "bulleted", "numbered", "todo" ]);
+            expect(getBlock(editor, 1).getAttribute("listIndent")).toBe(0);
+            expect(getBlock(editor, 2).getAttribute("listIndent")).toBe(1);
+        });
+
+        it("still turns an indent-0 item into a paragraph", () => {
+            setModelData(editor.model,
+                '<paragraph listIndent="0" listItemId="a" listType="numbered">[]B</paragraph>');
+            editor.execute("outdentList");
+
+            expect(getBlock(editor, 0).hasAttribute("listItemId")).toBe(false);
+            expect(getBlock(editor, 0).getChild(0)?.data).toBe("B");
+        });
+
+        it("leaves type unchanged when the sibling it joins is already the same type", () => {
+            setModelData(editor.model,
+                '<paragraph listIndent="0" listItemId="a" listType="numbered">A</paragraph>' +
+                '<paragraph listIndent="1" listItemId="b" listType="numbered">[]B</paragraph>');
+            editor.execute("outdentList");
+
+            expect(listTypes(editor)).toEqual([ "numbered", "numbered" ]);
+            expect(getBlock(editor, 1).getAttribute("listIndent")).toBe(0);
+        });
+
+        it("undoes the outdent and the kept type in one step", () => {
+            setModelData(editor.model,
+                '<paragraph listIndent="0" listItemId="a" listType="bulleted">A</paragraph>' +
+                '<paragraph listIndent="1" listItemId="b" listType="numbered">[]B</paragraph>');
+            editor.execute("outdentList");
+
+            expect(listTypes(editor)).toEqual([ "bulleted", "numbered" ]);
+            expect(getBlock(editor, 1).getAttribute("listIndent")).toBe(0);
+
+            editor.execute("undo");
+
+            expect(listTypes(editor)).toEqual([ "bulleted", "numbered" ]);
+            expect(getBlock(editor, 1).getAttribute("listIndent")).toBe(1);
+        });
+    });
+
+    describe("indentList", () => {
+        let editor: ClassicEditor;
+
+        beforeEach(async () => {
+            editor = await createEditor();
+        });
+
+        it("stays enabled next to a different-type sibling after outdent", () => {
+            setModelData(editor.model,
+                '<paragraph listIndent="0" listItemId="a" listType="bulleted">A</paragraph>' +
+                '<paragraph listIndent="1" listItemId="b" listType="numbered">[]B</paragraph>');
+            editor.execute("outdentList");
+
+            expect(listTypes(editor)).toEqual([ "bulleted", "numbered" ]);
+            expect(editor.commands.get("indentList")?.isEnabled).toBe(true);
+
+            editor.execute("indentList");
+
+            expect(listTypes(editor)).toEqual([ "bulleted", "numbered" ]);
+            expect(getBlock(editor, 1).getAttribute("listIndent")).toBe(1);
+        });
+
+        it("indents a numbered item that sits next to a bullet", () => {
+            setModelData(editor.model,
+                '<paragraph listIndent="0" listItemId="a" listType="bulleted">A</paragraph>' +
+                '<paragraph listIndent="0" listItemId="b" listType="numbered">[]B</paragraph>');
+
+            expect(editor.commands.get("indentList")?.isEnabled).toBe(true);
+            editor.execute("indentList");
+
+            expect(listTypes(editor)).toEqual([ "bulleted", "numbered" ]);
+            expect(getBlock(editor, 1).getAttribute("listIndent")).toBe(1);
+        });
+
+        it("keeps type when indenting next to a nested item of a different type", () => {
+            setModelData(editor.model,
+                '<paragraph listIndent="0" listItemId="a" listType="bulleted">A</paragraph>' +
+                '<paragraph listIndent="1" listItemId="c" listType="bulleted">C</paragraph>' +
+                '<paragraph listIndent="0" listItemId="b" listType="numbered">[]B</paragraph>');
+
+            expect(editor.commands.get("indentList")?.isEnabled).toBe(true);
+            editor.execute("indentList");
+
+            expect(listTypes(editor)).toEqual([ "bulleted", "bulleted", "numbered" ]);
+            expect(getBlock(editor, 2).getAttribute("listIndent")).toBe(1);
+        });
+
+        it("still cannot indent the first item in a list", () => {
+            setModelData(editor.model,
+                '<paragraph listIndent="0" listItemId="a" listType="numbered">[]A</paragraph>' +
+                '<paragraph listIndent="0" listItemId="b" listType="bulleted">B</paragraph>');
+
+            expect(editor.commands.get("indentList")?.isEnabled).toBe(false);
+        });
+
+        it("does not enable indent outside a list", () => {
+            setModelData(editor.model, "<paragraph>[]plain</paragraph>");
+            expect(editor.commands.get("indentList")?.isEnabled).toBe(false);
+        });
+
+        it("does not enable indent when the previous list item is a parent, not a sibling", () => {
+            setModelData(editor.model,
+                '<paragraph listIndent="0" listItemId="a" listType="bulleted">A</paragraph>' +
+                '<paragraph listIndent="1" listItemId="b" listType="numbered">[]B</paragraph>');
+
+            expect(editor.commands.get("indentList")?.isEnabled).toBe(false);
         });
     });
 

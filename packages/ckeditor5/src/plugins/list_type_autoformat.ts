@@ -30,6 +30,11 @@ type ListTypeCommand = Command & {
  * command while the caret is in that item — leaves items of the old type around it alone.
  * Upstream Autoformat and `ListCommand` both rewrite every same-indent sibling of the same
  * type; this plugin intercepts those two paths.
+ *
+ * Indent and outdent copy `listType` from the previous same-indent sibling, and stock
+ * `indentList` refuses to run when that sibling is a different type — so Tab dies after
+ * a mixed-type Shift+Tab. An item that already has content keeps its type; an empty item
+ * still adapts. Tab next to a different-type sibling is enabled.
  */
 export default class ListTypeAutoformat extends Plugin {
 
@@ -64,6 +69,16 @@ export default class ListTypeAutoformat extends Plugin {
             }
             wrapListCommandToCurrentItem(editor, command as ListTypeCommand);
         }
+
+        const indentList = editor.commands.get("indentList");
+        const outdentList = editor.commands.get("outdentList");
+        /* v8 ignore next 3 -- `List` is required, so both indent commands are registered */
+        if (!indentList || !outdentList) {
+            return;
+        }
+        wrapListIndentCommandToPreserveType(editor, indentList);
+        wrapListIndentCommandToPreserveType(editor, outdentList);
+        wrapIndentListToAllowMixedTypes(editor, indentList);
     }
 
 }
@@ -207,6 +222,147 @@ function wrapListCommandToCurrentItem(editor: Editor, command: ListTypeCommand):
             command.fire("afterExecute", changed);
         });
     }) as typeof command.execute;
+}
+
+/**
+ * Stock `ListIndentCommand` copies `listType` from the previous same-indent sibling after
+ * every indent or outdent. Restore the type of any item that already had content, in the
+ * same change so undo stays one step.
+ */
+function wrapListIndentCommandToPreserveType(editor: Editor, command: Command): void {
+    const originalExecute = command.execute.bind(command);
+    command.execute = ((...args: unknown[]) => {
+        const preserved = collectContentfulListTypes(editor);
+        if (preserved.size === 0) {
+            originalExecute(...args);
+            return;
+        }
+
+        editor.model.change((writer) => {
+            originalExecute(...args);
+            restoreListTypes(writer, editor, preserved);
+        });
+    }) as typeof command.execute;
+}
+
+/**
+ * Stock `indentList` is disabled when the previous same-indent sibling has a different
+ * `listType`. Tab then does nothing (or falls through to block indent). Enable it so a
+ * mixed-type item can nest under the item above.
+ */
+function wrapIndentListToAllowMixedTypes(editor: Editor, command: Command): void {
+    const originalRefresh = command.refresh.bind(command);
+    command.refresh = (() => {
+        originalRefresh();
+        if (!command.isEnabled && hasPreviousItemAtSameIndent(editor)) {
+            command.isEnabled = true;
+        }
+    }) as typeof command.refresh;
+}
+
+function hasPreviousItemAtSameIndent(editor: Editor): boolean {
+    const block = getSelectedListBlock(editor);
+    if (!block) {
+        return false;
+    }
+    const first = getItemBlocks(block)[0];
+    const indent = first.getAttribute("listIndent");
+    /* v8 ignore next 3 -- a list block always carries a numeric `listIndent` */
+    if (typeof indent !== "number") {
+        return false;
+    }
+
+    for (
+        let prev = first.previousSibling;
+        isListBlock(prev);
+        prev = prev.previousSibling
+    ) {
+        const prevIndent = prev.getAttribute("listIndent");
+        if (prevIndent === indent) {
+            return true;
+        }
+        if (typeof prevIndent === "number" && prevIndent < indent) {
+            return false;
+        }
+    }
+    return false;
+}
+
+function collectContentfulListTypes(editor: Editor): Map<string, string> {
+    const preserved = new Map<string, string>();
+    const root = editor.model.document.getRoot();
+    /* v8 ignore next 3 -- a live editor always has a root */
+    if (!root) {
+        return preserved;
+    }
+
+    visitListBlocks(root, (block) => {
+        const itemId = block.getAttribute("listItemId");
+        /* v8 ignore next 3 -- `listItemId` is always a string on a list block */
+        if (typeof itemId !== "string") {
+            return;
+        }
+        if (preserved.has(itemId)) {
+            return;
+        }
+        if (!itemHasContent(getItemBlocks(block))) {
+            return;
+        }
+        const type = block.getAttribute("listType");
+        /* v8 ignore next 3 -- `listType` is always a string on a list block */
+        if (typeof type !== "string") {
+            return;
+        }
+        preserved.set(itemId, type);
+    });
+    return preserved;
+}
+
+function restoreListTypes(
+    writer: ModelWriter,
+    editor: Editor,
+    preserved: Map<string, string>
+): void {
+    const root = editor.model.document.getRoot();
+    /* v8 ignore next 3 -- a live editor always has a root */
+    if (!root) {
+        return;
+    }
+
+    visitListBlocks(root, (block) => {
+        const itemId = block.getAttribute("listItemId");
+        /* v8 ignore next 3 -- `listItemId` is always a string on a list block */
+        if (typeof itemId !== "string") {
+            return;
+        }
+        const type = preserved.get(itemId);
+        if (type === undefined || block.getAttribute("listType") === type) {
+            return;
+        }
+        writer.setAttribute("listType", type, block);
+    });
+}
+
+function visitListBlocks(node: ModelElement, visit: (block: ModelElement) => void): void {
+    for (const child of node.getChildren()) {
+        if (!child.is("element")) {
+            continue;
+        }
+        if (child.hasAttribute("listItemId")) {
+            visit(child);
+        } else {
+            visitListBlocks(child, visit);
+        }
+    }
+}
+
+function itemHasContent(blocks: ModelElement[]): boolean {
+    for (const block of blocks) {
+        if (!block.isEmpty) {
+            return true;
+        }
+    }
+    return false;
 }
 
 function shouldRetargetCurrentItem(
