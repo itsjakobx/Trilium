@@ -14,6 +14,7 @@ For bulleted and numbered lists, it's possible to configure an alternative marke
     *   Numbered list: Start a line with `1.` or `1)` followed by a space;
     *   To-do list: Start a line with `- [ ]` for an unchecked item or `[x]` for a checked item.
 *   To create a new item in the list, press <kbd>Enter</kbd>.
+*   To switch list type in the middle of a list: click in an item and choose a different list button, or type a different marker (`- `, `1. `, `[ ] `) at the start of the row. That item becomes the start of a new list of that kind; items above and below keep their type. Select several items first to convert more than one.
 *   To create a blank line within a list item, press <kbd>Shift</kbd>+<kbd>Enter</kbd>.
 *   To exit out of the list, press <kbd>Enter</kbd> twice.
 *   To merge two lists, simply delete the gap between them.

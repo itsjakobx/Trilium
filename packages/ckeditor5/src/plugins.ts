@@ -55,6 +55,7 @@ import LinkEmbedToolbar from "./plugins/link_embed/link_embed_toolbar.js";
 import TodoListMultistate from "./plugins/todo_list_multistate/todo_list_multistate.js";
 import TodoListUncheckOnEnter from "./plugins/todo_list_uncheck_on_enter.js";
 import CollapsibleListItems from "./plugins/collapsible_list_items.js";
+import ListTypeAutoformat from "./plugins/list_type_autoformat.js";
 import TableIndent from "./plugins/table_indent.js";
 
 /**
@@ -89,6 +90,7 @@ const TRILIUM_PLUGINS: typeof Plugin[] = [
     LinkEmbedToolbar,
     TodoListMultistate,
     CollapsibleListItems,
+    ListTypeAutoformat,
     TableIndent,
     CopyAnchorLinkButton,
     CopyLinkUrlButton,

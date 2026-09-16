@@ -14,6 +14,7 @@ import TriliumFormatPainter from "./plugins/format_painter/format_painter.js";
 import IncludeNote from "./plugins/includenote.js";
 import InternalLinkPlugin from "./plugins/internallink.js";
 import LinkEmbed from "./plugins/link_embed/link_embed.js";
+import ListTypeAutoformat from "./plugins/list_type_autoformat.js";
 import TriliumSlashCommands from "./plugins/mention/slash_commands.js";
 import MentionCustomization from "./plugins/mention_customization.js";
 import ReferenceLink from "./plugins/referencelink.js";
@@ -82,6 +83,7 @@ describe("plugin lists", () => {
         expect(COMMON_PLUGINS).toContain(LinkEmbed);
         expect(COMMON_PLUGINS).toContain(FindInLinkWidgets);
         expect(COMMON_PLUGINS).toContain(Uploadfileplugin);
+        expect(COMMON_PLUGINS).toContain(ListTypeAutoformat);
     });
 
     it("COMMON_PLUGINS includes the external widget plugins", () => {
