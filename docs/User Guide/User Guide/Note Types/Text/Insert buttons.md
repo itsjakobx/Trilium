@@ -59,3 +59,9 @@ Page breaks are marked in the editor with the words _Page break_, but they will 
 
 *   To insert a page break, press the <img src="Insert buttons_image.png" width="20" height="19"> in the formatting toolbar.
 *   To insert many page breaks at once, insert a page break first, click on it and press <kbd>Ctrl</kbd>+<kbd>C</kbd>. Then use <kbd>Ctrl</kbd>+<kbd>V</kbd>, to paste as many times as needed.
+
+## Property
+
+The _Property_ button in the Insert group places a live row for one of this note's attributes in the document. The slash catalog lists properties already on the note, plus _New relation…_ and _New label…_.
+
+The block stores only which attribute it shows. Values stay in the attributes table, so the sidebar, search and the promoted header stay in sync. Deleting the block removes the placement, not the attribute. A property already placed in the body is omitted from the promoted attributes bar.

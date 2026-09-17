@@ -184,7 +184,7 @@ describe("TriliumSlashCommands", () => {
 
             // No `heading.options` to derive from, so the palette carries no headings at all...
             expect(buildDefaultSlashCommands(editor).map((definition) => definition.id))
-                .toEqual([ "blockQuote", "codeBlock", "insertTable", "horizontalLine", "indent", "outdent" ]);
+                .toEqual([ "blockQuote", "codeBlock", "insertTable", "horizontalLine", "indent", "outdent", "uploadImage" ]);
 
             // ...and of those, only the one whose plugin is actually loaded survives the catalog.
             const ids = (await queryPalette("")).map((item) => (item as { id: string }).id);
@@ -553,6 +553,15 @@ describe("buildTriliumSlashCommands", () => {
         definition(id).execute?.(fake);
 
         expect(executeSpy).toHaveBeenCalledWith("alignment", { value });
+    });
+
+    it("lists the new-property entries immediately after include-note", () => {
+        const ids = buildTriliumSlashCommands(editor).map((entry) => entry.id);
+        const include = ids.indexOf("include-note");
+
+        expect(ids.slice(include, include + 3)).toEqual([ "include-note", "new-relation", "new-label" ]);
+        expect(definition("new-relation").title).toBe("New relation…");
+        expect(definition("new-label").title).toBe("New label…");
     });
 
     it("finds the collapsible block under the names other editors give it", () => {

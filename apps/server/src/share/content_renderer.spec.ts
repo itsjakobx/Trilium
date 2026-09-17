@@ -83,6 +83,26 @@ describe("content_renderer", () => {
             expect(result.content).toContain("Note C");
         });
 
+        it("hydrates a property block from the note's own attributes", () => {
+            buildShareNote({ id: "relTarget", title: "Other" });
+            const note = buildShareNote({
+                content: `<p>Before</p>`
+                    + `<section class="property-block" data-trilium-attr-type="relation" data-trilium-attr-name="associated"></section>`
+                    + `<section class="property-block" data-trilium-attr-type="label" data-trilium-attr-name="tags"></section>`
+                    + `<p>After</p>`,
+                "~associated": "relTarget",
+                "#tags": "alpha"
+            });
+            const result = getContent(note);
+            if (typeof result.content !== "string") throw new Error("expected string content");
+            expect(result.content).toContain("property-block-name");
+            expect(result.content).toContain("associated");
+            expect(result.content).toContain("Other");
+            expect(result.content).toContain("alpha");
+            expect(result.content).toContain("Before");
+            expect(result.content).toContain("After");
+        });
+
         it("expands nested includes recursively when exporting (expandNestedIncludes)", () => {
             buildShareNote({ id: "expC", title: "Note C", content: "<p>C body</p>" });
             buildShareNote({

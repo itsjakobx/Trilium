@@ -22,6 +22,7 @@ import { useNoteBlob, useNoteLabel, useSearchTermsConsumer, useSyncedRef, useTri
 import { RawHtmlBlock } from "../../react/RawHtml";
 import { TypeWidgetProps } from "../type_widget";
 import { applyReferenceLinks } from "./read_only_helper";
+import { hydratePropertyBlocks } from "./PropertyBlock";
 import { loadIncludedNote, refreshIncludedNote, setupImageOpening } from "./utils";
 
 export default function ReadOnlyText({ note, noteContext, ntxId, parentComponent, isVisible }: TypeWidgetProps) {
@@ -55,6 +56,7 @@ export default function ReadOnlyText({ note, noteContext, ntxId, parentComponent
         <>
             <ReadOnlyTextContent
                 html={blob?.content ?? ""}
+                note={note}
                 ntxId={ntxId}
                 dir={isRtl ? "rtl" : "ltr"}
                 contentRef={readOnlyContentRef}
@@ -66,6 +68,8 @@ export default function ReadOnlyText({ note, noteContext, ntxId, parentComponent
 interface ReadOnlyTextContentProps {
     /** CKEditor-compatible HTML to render. */
     html: string;
+    /** The note the HTML belongs to, so property blocks can read live attribute values. */
+    note?: FNote;
     /** Note context id — enables `contentElRefreshed` / `executeWithContentElement` integrations when provided. */
     ntxId?: string | null;
     dir?: "ltr" | "rtl";
@@ -81,7 +85,7 @@ interface ReadOnlyTextContentProps {
  * titles, code-block syntax highlighting, and image click handling. Transforms re-run
  * whenever `html` changes.
  */
-export function ReadOnlyTextContent({ html, ntxId, dir, className, contentRef: externalContentRef }: ReadOnlyTextContentProps) {
+export function ReadOnlyTextContent({ html, note, ntxId, dir, className, contentRef: externalContentRef }: ReadOnlyTextContentProps) {
     const contentRef = useSyncedRef(externalContentRef);
     const [ codeBlockWordWrap ] = useTriliumOptionBool("codeBlockWordWrap");
     const [ codeBlockTabWidth ] = useTriliumOption("codeBlockTabWidth");
@@ -110,6 +114,7 @@ export function ReadOnlyTextContent({ html, ntxId, dir, className, contentRef: e
             rewriteMermaidDiagramsInContainer(container),
             applyInlineMermaid(container),
             applyIncludedNotes(container),
+            applyPropertyBlocks(container, note),
             applyLinkEmbeds(container),
             applyReferenceLinks(container),
             formatCodeBlocks($(container))
@@ -117,7 +122,7 @@ export function ReadOnlyTextContent({ html, ntxId, dir, className, contentRef: e
 
         applyMath(container);
         setupImageOpening(container, true);
-    }, [ html, ntxId, contentRef ]);
+    }, [ html, note, ntxId, contentRef ]);
 
     // React to included note changes.
     useTriliumEvent("refreshIncludedNote", ({ noteId }) => {
@@ -162,6 +167,13 @@ function applyIncludedNotes(container: HTMLDivElement) {
         loaded.push(loadIncludedNote(noteId, $(includedNote)));
     }
     return Promise.all(loaded);
+}
+
+function applyPropertyBlocks(container: HTMLDivElement, note: FNote | undefined) {
+    if (!note) {
+        return;
+    }
+    hydratePropertyBlocks(container, note);
 }
 
 function applyMath(container: HTMLDivElement) {

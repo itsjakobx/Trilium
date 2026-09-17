@@ -87,6 +87,8 @@ export interface NoteContextDataMap {
     saveState: {
         state: SaveState;
     };
+    /** Attribute names the text editor has placed as property blocks, so the promoted header can omit them. */
+    placedPropertyNames: string[];
     /** Published by content widgets (via `useNoteBlob`) while the note's content is being fetched,
      * so the note detail can show a loading state instead of the previous note's content. */
     contentLoad: {

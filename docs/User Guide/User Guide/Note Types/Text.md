@@ -62,7 +62,7 @@ Here's a list of various features supported by text notes:
         </tr>
         <tr>
             <td><a class="reference-link" href="Text/Insert%20buttons.md">Insert buttons</a></td>
-            <td><ul><li>Symbols</li><li><a class="reference-link" href="Text/Math%20Equations.md">Math Equations</a></li><li>Mermaid diagrams</li><li>Horizontal ruler</li><li>Page break</li></ul></td>
+            <td><ul><li>Symbols</li><li><a class="reference-link" href="Text/Math%20Equations.md">Math Equations</a></li><li>Mermaid diagrams</li><li>Horizontal ruler</li><li>Page break</li><li>Property blocks</li></ul></td>
         </tr>
         <tr>
             <td><a class="reference-link" href="Text/Other%20features.md">Other features</a></td>

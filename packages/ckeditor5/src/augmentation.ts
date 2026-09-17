@@ -2,7 +2,7 @@ import "ckeditor5";
 
 declare global {
     interface Component {
-        triggerCommand(command: string): void;
+        triggerCommand(command: string, data?: unknown): void;
     }
 
     interface LinkEmbedMetadata {
@@ -26,6 +26,22 @@ declare global {
         loadReferenceLinkTitle($el: JQuery<HTMLElement>, href: string): Promise<void>;
         createNoteForReferenceLink(title: string, intoInbox: boolean): Promise<string | undefined>;
         loadIncludedNote(noteId: string, $el: JQuery<HTMLElement>, boxSize?: string): void;
+        /**
+         * Mounts the live attribute editor into a property-block widget. The widget stores only
+         * the attribute's type and name; values are read and written through froca.
+         */
+        renderPropertyBlock($el: JQuery<HTMLElement>, config: { attrType: string; attrName: string }): void;
+        /**
+         * Properties the slash catalog can place: definitions on the note plus owned attributes
+         * that already hold a value, excluding ones already in the document.
+         */
+        getPropertyBlockCatalog(): Array<{
+            attrType: "label" | "relation";
+            attrName: string;
+            title: string;
+            aliases?: string[];
+            iconClass?: string;
+        }>;
         /**
          * Reads a page's preview metadata through the host. Never rejects: any failure — network
          * error, HTTP error, unparseable page — resolves as `{ unresolved: true }` with

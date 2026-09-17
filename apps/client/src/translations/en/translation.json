@@ -4258,7 +4258,14 @@
       "url": "URL",
       "upload-image": "Upload image",
       "warning": "Warning",
-      "working": "Working…"
+      "working": "Working…",
+      "property": "Property",
+      "insert-a-property-into-the-note": "Insert a property into the note",
+      "new-relation": "New relation…",
+      "create-a-relation-and-place-it-in-the-note": "Create a relation and place it in the note",
+      "new-label": "New label…",
+      "create-a-label-and-place-it-in-the-note": "Create a label and place it in the note",
+      "property-block-widget": "property block widget"
     },
     "task-state-dropped-title": "Invalid task states",
     "task-state-dropped-message_one": "A custom task state definition is invalid and was ignored.",
@@ -4293,5 +4300,18 @@
     "creation-date": "Creation date & time",
     "ascending": "Ascending",
     "descending": "Descending"
+  },
+  "property_block": {
+    "add_related_note": "Add a related note",
+    "remove_related_note": "Remove this related note",
+    "pick_title": "Insert a property",
+    "pick_placeholder": "Search properties",
+    "new_relation": "New relation…",
+    "new_label": "New label…",
+    "name_prompt_title": "Property name",
+    "name_prompt_relation": "Name of the relation",
+    "name_prompt_label": "Name of the label",
+    "invalid_name": "Use letters, numbers, underscores or colons.",
+    "group_existing": "On this note"
   }
 }

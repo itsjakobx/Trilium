@@ -44,6 +44,7 @@ import { ADMONITION_TYPE_NAMES, type AdmonitionType } from "../admonition/admoni
 import { getAdmonitionTitle } from "../admonition/admonition_ui.js";
 import aiIcon from "../ai_assistant/theme/icons/ai.svg?raw";
 import { COMMAND_NAME as INCLUDE_NOTE_COMMAND } from "../includenote.js";
+import { buildPropertySlashCommands } from "../property_block.js";
 import { COMMAND_NAME as INSERT_DATE_TIME_COMMAND } from "../insert_date_time.js";
 import { COMMAND_NAME as INTERNAL_LINK_COMMAND } from "../internallink.js";
 import { COMMAND_NAME as MARKDOWN_IMPORT_COMMAND } from "../markdownimport.js";
@@ -379,6 +380,7 @@ export function buildTriliumSlashCommands(editor: Editor): SlashCommandDefinitio
             icon: noteIcon,
             commandName: INCLUDE_NOTE_COMMAND
         },
+        ...buildPropertySlashCommands(editor),
         {
             id: "page-break",
             title: t("Page break"),

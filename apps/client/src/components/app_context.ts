@@ -374,6 +374,9 @@ export type CommandMappings = {
     pasteMarkdownIntoText: CommandData;
     cutIntoNote: CommandData;
     addIncludeNoteToText: CommandData;
+    addPropertyBlockToText: CommandData & {
+        attrType?: "label" | "relation";
+    };
     editReadOnlyNote: CommandData;
     toggleRibbonTabClassicEditor: CommandData;
     toggleRibbonTabBasicProperties: CommandData;

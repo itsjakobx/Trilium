@@ -50,6 +50,7 @@ describe("CKEditor config", () => {
 
         expect([ ...classicToolbarItems ].toSorted())
             .toStrictEqual([...floatingToolbarAllItems ].toSorted());
+        expect(classicToolbarItems.has("propertyBlock")).toBe(true);
     });
 });
 

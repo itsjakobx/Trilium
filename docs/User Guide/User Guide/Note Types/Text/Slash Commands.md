@@ -18,3 +18,4 @@ Apart from the common set of commands, some features are specially integrated wi
 *   For [admonitions](Block%20quotes%20%26%20admonitions.md), each admonition type (e.g. note, tip) will be individually displayed.
 *   Every <a class="reference-link" href="Text%20Snippets.md">Text Snippets</a> will also appear individually, making it easy to insert them.
 *   <a class="reference-link" href="In-editor%20AI%20assistant.md">In-editor AI assistant</a>: dedicated _Ask AI_ item as well as all the predefined and [custom quick actions](In-editor%20AI%20assistant/Custom%20AI%20quick%20actions.md).
+*   Properties already on the note (promoted definitions and owned attributes) appear individually, followed by _New relation…_ and _New label…_ to place a live property block in the document.

@@ -6,7 +6,7 @@ import NoteContext from "../../components/note_context";
 import FNote from "../../entities/fnote";
 import { t } from "../../services/i18n";
 import { checkFullHeight, getExtendedWidgetType } from "../NoteDetail";
-import { PromotedAttributesContent, usePromotedAttributeData } from "../PromotedAttributes";
+import { PromotedAttributesContent, useOmittedPropertyNames, usePromotedAttributeData } from "../PromotedAttributes";
 import Collapsible, { ExternallyControlledCollapsible } from "../react/Collapsible";
 import { useNoteContext, useNoteLabel, useNoteProperty, useTriliumEvent, useTriliumOptionBool } from "../react/hooks";
 import { NewNoteLink } from "../react/NoteLink";
@@ -45,6 +45,8 @@ function PromotedAttributes({ note, componentId, noteContext }: {
     noteContext: NoteContext | undefined
 }) {
     const [ cells, setCells ] = usePromotedAttributeData(note, componentId, noteContext);
+    const omitted = useOmittedPropertyNames(undefined, note, noteContext);
+    const shown = omitted.length ? cells?.filter((cell) => !omitted.includes(cell.valueName)) : cells;
     const [ expanded, setExpanded ] = useState(false);
 
     useEffect(() => {
@@ -57,14 +59,14 @@ function PromotedAttributes({ note, componentId, noteContext }: {
     // Keyboard shortcut.
     useTriliumEvent("toggleRibbonTabPromotedAttributes", () => setExpanded(!expanded));
 
-    if (!cells?.length) return false;
+    if (!shown?.length) return false;
     return (note && (
         <ExternallyControlledCollapsible
             key={note.noteId}
             title={t("note_title.promoted_attributes")}
             expanded={expanded} setExpanded={setExpanded}
         >
-            <PromotedAttributesContent note={note} componentId={componentId} cells={cells} setCells={setCells} />
+            <PromotedAttributesContent note={note} componentId={componentId} cells={shown} setCells={setCells} />
         </ExternallyControlledCollapsible>
     ));
 }

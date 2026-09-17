@@ -20,6 +20,7 @@ export interface CKEditorApi {
     addLinkToEditor(linkHref: string, linkTitle: string): void;
     addHtmlToEditor(html: string): void;
     addIncludeNote(noteId: string, boxSize?: BoxSize): void;
+    addPropertyBlock(attrType: "label" | "relation", attrName: string): void;
     addImage(noteId: string): Promise<void>;
 }
 
@@ -182,6 +183,11 @@ export default function CKEditorWithWatchdog({ containerRef: externalContainerRe
                     })
                 );
             });
+        },
+        addPropertyBlock(attrType, attrName) {
+            const editor = watchdogRef.current?.editor;
+            if (!editor) return;
+            editor.execute("insertPropertyBlock", { attrType, attrName });
         },
         addHtmlToEditor(html: string) {
             const editor = watchdogRef.current?.editor;

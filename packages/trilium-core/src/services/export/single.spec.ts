@@ -38,6 +38,34 @@ describe("Note type mappings", () => {
         }
     });
 
+    it("fills property-block values from the note's attributes on markdown export", () => {
+        const related = buildNote({ id: "relNote", title: "Other" });
+        const note = buildNote({
+            type: "text",
+            title: "Page",
+            "#tags": "alpha",
+            "~associated": related.noteId
+        });
+        const content =
+            `<section class="property-block" data-trilium-attr-type="relation" data-trilium-attr-name="associated"></section>`
+            + `<section class="property-block" data-trilium-attr-type="label" data-trilium-attr-name="tags"></section>`;
+
+        const { payload } = mapByNoteType(note, content, "markdown");
+        expect(payload).toContain("**associated:** <a class=\"reference-link\" href=\"#root/relNote\">Other</a>");
+        expect(payload).toContain("**tags:** alpha");
+    });
+
+    it("skips incomplete property-block sections and HTML that has none", () => {
+        const note = buildNote({ type: "text", title: "Page", "#tags": "alpha" });
+
+        expect(mapByNoteType(note, "<p>plain</p>", "markdown").payload).toContain("plain");
+        expect(mapByNoteType(
+            note,
+            `<section class="property-block" data-trilium-attr-type="label"></section>`,
+            "markdown"
+        ).payload).toContain("**property:**");
+    });
+
     it("inlines both of a link preview's picture attachments as base64 in single-note HTML export", () => {
         // A link preview references its card image and its favicon from `data-image` and
         // `data-favicon`, not from an <img src>; the single-file export must inline both the same

@@ -722,7 +722,7 @@ pre button.copy-button.icon-action {
 }
 
 /* Child combinator: as a descendant one it also hit first-children nested inside a block, stacking a pixel per level. */
-html .note-detail-editable-text > :not(figure, .include-note, hr):first-child {
+html .note-detail-editable-text > :not(figure, .include-note, .property-block, hr):first-child {
     /* Create some space for the top-side shadow */
     margin-top: 1px !important;
 }

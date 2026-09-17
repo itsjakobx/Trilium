@@ -18,8 +18,9 @@ import LabelValueInput from "./attribute_widgets/label_value_input";
 import MultiValueInput from "./attribute_widgets/multi_value_input";
 import RelationValuesInput from "./attribute_widgets/relation_values_input";
 import ColorPicker from "./react/ColorPicker";
-import { useNoteContext, useNoteLabel, useTriliumEvent, useUniqueName } from "./react/hooks";
+import { useGetContextDataFrom, useNoteContext, useNoteLabel, useTriliumEvent, useUniqueName } from "./react/hooks";
 import NoteAutocomplete from "./react/NoteAutocomplete";
+import { collectPropertyBlockNamesFromHtml, mergePromotedOmit } from "./type_widgets/text/property_block_placement";
 
 interface Cell {
     uniqueId: string;
@@ -59,8 +60,41 @@ export default function PromotedAttributes({ omit }: {
 } = {}) {
     const { note, componentId, noteContext } = useNoteContext();
     const [ cells, setCells ] = usePromotedAttributeData(note, componentId, noteContext);
-    const shown = omit?.length ? cells?.filter((cell) => !omit.includes(cell.valueName)) : cells;
+    const omitted = useOmittedPropertyNames(omit, note, noteContext);
+    const shown = omitted.length ? cells?.filter((cell) => !omitted.includes(cell.valueName)) : cells;
     return <PromotedAttributesContent note={note} componentId={componentId} cells={shown} setCells={setCells} />;
+}
+
+/**
+ * Names the promoted header should hide: a host's own omit list plus attributes already placed
+ * as property blocks in the note body. Live names from the editor win while it is mounted;
+ * otherwise the blob is parsed so read-only view still hides the same fields.
+ */
+export function useOmittedPropertyNames(
+    extraOmit: readonly string[] | undefined,
+    note: FNote | null | undefined,
+    noteContext: NoteContext | undefined
+) {
+    const live = useGetContextDataFrom(noteContext, "placedPropertyNames");
+    const [ fromBlob, setFromBlob ] = useState<string[]>([]);
+
+    useEffect(() => {
+        if (live !== undefined || !note) {
+            return;
+        }
+
+        let cancelled = false;
+        note.getBlob().then((blob) => {
+            if (!cancelled) {
+                setFromBlob(collectPropertyBlockNamesFromHtml(blob?.content ?? ""));
+            }
+        });
+        return () => {
+            cancelled = true;
+        };
+    }, [ note, live ]);
+
+    return mergePromotedOmit(extraOmit, live ?? fromBlob);
 }
 
 export function PromotedAttributesContent({ note, componentId, cells, setCells }: {

@@ -161,3 +161,33 @@ body.type-webView {
     max-width: 100%;
     object-fit: contain;
 }
+
+.ck-content section.property-block {
+    margin: 0.4em 0;
+}
+
+.ck-content .property-block-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.ck-content .property-block-name {
+    padding: 0.15rem 0.6rem;
+    border: 1px solid var(--background-active);
+    border-radius: 6px;
+    font-weight: 600;
+}
+
+.ck-content .property-block-values {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+}
+
+.ck-content .property-block-chip {
+    padding: 0.15rem 0.45rem;
+    border-radius: 12px;
+    background: var(--background-secondary);
+}

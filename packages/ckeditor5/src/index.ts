@@ -20,6 +20,12 @@ export { default as TriliumAiAssistant } from "./plugins/ai_assistant/ai_assista
 export type { AiAssistantConfig, AiCompletionRequest, AiCompletionUsage, AiConversationTurn, AiDiffFunction, AiDiffResult, AiQuickAction, AiQuickActionFooter, AiQuickActionGroup, AiReviewView, AiSanitizeFunction, AiStreamCallback, AiStreamFunction, AiSurroundings } from "./plugins/ai_assistant/ai_assistant_config.js";
 export { default as getCkLocale, registerCkTranslations } from "./i18n.js";
 export { MESSAGE_KEY_PREFIX, MESSAGE_OVERRIDES, slugify } from "./messages.js";
+export {
+    COMMAND_NAME as INSERT_PROPERTY_BLOCK_COMMAND,
+    getPlacedPropertyKeys,
+    insertPropertyBlock,
+    propertyKey
+} from "./plugins/property_block.js";
 export * from "./utils.js";
 
 // Import with sideffects to ensure that type augmentations are present.

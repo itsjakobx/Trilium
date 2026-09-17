@@ -2,6 +2,7 @@ import { KATEX_MACROS } from "@triliumnext/commons";
 
 import FAttachment from "../entities/fattachment.js";
 import FNote from "../entities/fnote.js";
+import { hydratePropertyBlocks } from "../widgets/type_widgets/text/PropertyBlock";
 import { default as content_renderer, type RenderOptions } from "./content_renderer.js";
 import froca from "./froca.js";
 import { t } from "./i18n.js";
@@ -35,6 +36,9 @@ export default async function renderText(note: FNote | FAttachment, $renderedCon
 export async function postProcessRichContent(note: FNote | FAttachment, $renderedContent: JQuery<HTMLElement>, options: RenderOptions = {}) {
     const seenNoteIds = options.seenNoteIds ?? new Set<string>();
     seenNoteIds.add("noteId" in note ? note.noteId : note.attachmentId);
+    if (note instanceof FNote) {
+        hydratePropertyBlocks($renderedContent[0], note);
+    }
     if (options.noIncludedNotes) {
         $renderedContent.find("section.include-note").remove();
     } else if (options.includesAsReferenceLinks) {

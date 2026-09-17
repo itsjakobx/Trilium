@@ -6,6 +6,8 @@ import escapeHtml from "escape-html";
 import { parse as parseHtml } from "node-html-parser";
 import Turnish, { type Rule } from "turnish";
 
+import becca from "../../becca/becca.js";
+import type BNote from "../../becca/entities/bnote.js";
 import { getTaskStates } from "../task_states.js";
 
 let instance: Turnish | null = null;
@@ -50,6 +52,10 @@ function toMarkdown(content: string) {
                     return node.outerHTML;
                 }
 
+                if (node.nodeName === "SECTION" && node.classList.contains("property-block")) {
+                    return propertyBlockReplacement(node, "");
+                }
+
                 // Only reached by a link preview without a data-url (the fallback anchor injected
                 // by `injectLinkPreviewFallbacks` makes every other one non-blank).
                 if (isLinkPreview(node)) {
@@ -68,6 +74,7 @@ function toMarkdown(content: string) {
         instance.addRule("inlineLink", buildInlineLinkFilter());
         instance.addRule("figure", buildFigureFilter());
         instance.addRule("linkPreview", buildLinkPreviewFilter());
+        instance.addRule("propertyBlock", buildPropertyBlockFilter());
         // Before "math": rules are consulted in reverse registration order, so a highlighted
         // formula stays a formula instead of being flattened into `==\(x\)==`.
         instance.addRule("highlight", buildHighlightFilter());
@@ -503,6 +510,61 @@ function normalizeColor(color: string) {
     return color.replace(/\s+/g, "").toLowerCase();
 }
 
+function buildPropertyBlockFilter(): Rule {
+    return {
+        filter(node) {
+            return node.nodeName === "SECTION" && node.classList.contains("property-block");
+        },
+        replacement(content, node) {
+            return propertyBlockReplacement(node, content);
+        }
+    };
+}
+
+function propertyBlockReplacement(node: Node, content: string) {
+    const name = ("getAttribute" in node && typeof node.getAttribute === "function")
+        ? (node.getAttribute("data-trilium-attr-name") || "property")
+        : "property";
+    const body = content.trim();
+    return body ? `\n\n**${name}:** ${body}\n\n` : `\n\n**${name}:**\n\n`;
+}
+
+/**
+ * Writes the note's live attribute values into empty property-block sections so markdown export
+ * can keep a readable fallback. The block itself never stores those values.
+ */
+export function fillPropertyBlockValues(content: string, note: BNote) {
+    const root = parseHtml(content);
+    const sections = root.querySelectorAll("section.property-block");
+    if (!sections.length) {
+        return content;
+    }
+
+    for (const section of sections) {
+        const attrType = section.getAttribute("data-trilium-attr-type");
+        const attrName = section.getAttribute("data-trilium-attr-name");
+        if (!attrType || !attrName) {
+            continue;
+        }
+
+        if (attrType === "relation") {
+            const links = note.getOwnedRelations(attrName)
+                .map((attr) => attr.value)
+                .filter(Boolean)
+                .map((noteId) => {
+                    const title = escapeHtml(becca.getNote(noteId)?.title ?? noteId);
+                    return `<a class="reference-link" href="#root/${escapeHtml(noteId)}">${title}</a>`;
+                });
+            section.innerHTML = links.join(" ");
+        } else {
+            const values = note.getOwnedLabels(attrName).map((attr) => escapeHtml(attr.value));
+            section.innerHTML = values.join(", ");
+        }
+    }
+
+    return root.toString();
+}
+
 // Taken from upstream since it's not exposed.
 // https://github.com/mixmark-io/turndown/blob/master/src/commonmark-rules.js
 function cleanAttribute(attribute: string | null | undefined) {
@@ -510,5 +572,6 @@ function cleanAttribute(attribute: string | null | undefined) {
 }
 
 export default {
-    toMarkdown
+    toMarkdown,
+    fillPropertyBlockValues
 };

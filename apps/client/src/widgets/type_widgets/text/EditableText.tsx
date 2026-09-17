@@ -1,7 +1,7 @@
 import "./EditableText.css";
 import "./LinkEmbed.css";
 
-import { CKTextEditor, EditorWatchdog, SnippetDefinition } from "@triliumnext/ckeditor5";
+import { CKTextEditor, EditorWatchdog, getPlacedPropertyKeys, SnippetDefinition } from "@triliumnext/ckeditor5";
 import { deferred } from "@triliumnext/commons";
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 
@@ -16,10 +16,13 @@ import options from "../../../services/options";
 import { consumeSearchTerms } from "../../../services/search_jump";
 import toast from "../../../services/toast";
 import utils, { isMobile } from "../../../services/utils";
-import { useEditorSpacedUpdate, useLegacyImperativeHandlers, useNoteLabel, useSearchTermsConsumer, useTriliumEvent, useTriliumOption, useTriliumOptionBool } from "../../react/hooks";
+import { useEditorSpacedUpdate, useLegacyImperativeHandlers, useNoteLabel, useSearchTermsConsumer, useSetContextData, useTriliumEvent, useTriliumOption, useTriliumOptionBool } from "../../react/hooks";
 import { setEditorNoteId } from "../../react/NoteStore";
 import { TypeWidgetProps } from "../type_widget";
 import CKEditorWithWatchdog, { CKEditorApi, NotificationEventData, NotificationEventInfo } from "./CKEditorWithWatchdog";
+import { listPropertyBlockCandidates, parsePropertyKey } from "./property_block_catalog";
+import { namesFromPropertyKeys } from "./property_block_placement";
+import { mountPropertyBlock, pickerItemsFor, promptForPropertyName } from "./PropertyBlock";
 import getTemplates, { updateTemplateCache } from "./snippets.js";
 import linkEmbedService from "../../../services/link_embed";
 import { usesClassicToolbar } from "./toolbar";
@@ -94,6 +97,12 @@ export default function EditableText({ note, parentComponent, ntxId, noteContext
         }
     });
     const templates = useTemplates();
+    const [ placedPropertyNames, setPlacedPropertyNames ] = useState<string[]>([]);
+    useSetContextData(noteContext, "placedPropertyNames", placedPropertyNames);
+
+    function refreshPlacedPropertyNames(editor: Parameters<typeof getPlacedPropertyKeys>[0]) {
+        setPlacedPropertyNames(namesFromPropertyKeys(getPlacedPropertyKeys(editor)));
+    }
 
     useSearchTermsConsumer(note, noteContext, ntxId);
 
@@ -153,7 +162,46 @@ export default function EditableText({ note, parentComponent, ntxId, noteContext
                 editorApi: editorApiRef.current,
             });
         },
+        async addPropertyBlockToTextCommand({ attrType }: { attrType?: "label" | "relation" } = {}) {
+            if (!editorApiRef.current) return;
+            const editor = await waitForEditor();
+            const placed = editor ? getPlacedPropertyKeys(editor) : new Set<string>();
+
+            if (attrType === "label" || attrType === "relation") {
+                const name = await promptForPropertyName(attrType);
+                if (!name) return;
+                editorApiRef.current.addPropertyBlock(attrType, name);
+                return;
+            }
+
+            const picked = await dialog.pickSingleItem({
+                title: t("property_block.pick_title"),
+                placeholder: t("property_block.pick_placeholder"),
+                items: pickerItemsFor(note, placed)
+            });
+            if (!picked) return;
+
+            if (picked.key === "new:relation" || picked.key === "new:label") {
+                const type = picked.key === "new:relation" ? "relation" : "label";
+                const name = await promptForPropertyName(type);
+                if (!name) return;
+                editorApiRef.current.addPropertyBlock(type, name);
+                return;
+            }
+
+            const parsed = parsePropertyKey(picked.key);
+            if (!parsed) return;
+            editorApiRef.current.addPropertyBlock(parsed.attrType, parsed.attrName);
+        },
         loadIncludedNote,
+        renderPropertyBlock($el, config) {
+            const el = $el[0];
+            if (!el) return;
+            mountPropertyBlock(el, note, config, parentComponent?.componentId ?? "", parentComponent ?? null);
+        },
+        getPropertyBlockCatalog() {
+            return listPropertyBlockCandidates(note);
+        },
         // Link preview functionality. The insert flow itself lives in the editor (a balloon form),
         // so the host only has to supply the metadata and the rendering.
         async fetchLinkMetadata(url: string) {
@@ -469,7 +517,13 @@ export default function EditableText({ note, parentComponent, ntxId, noteContext
                 templates={templates}
                 onNotificationWarning={onNotificationWarning}
                 onWatchdogStateChange={onWatchdogStateChange}
-                onChange={() => spacedUpdate.scheduleUpdate()}
+                onChange={() => {
+                    spacedUpdate.scheduleUpdate();
+                    const editor = watchdogRef.current?.editor;
+                    if (editor) {
+                        refreshPlacedPropertyNames(editor);
+                    }
+                }}
                 onEditorInitialized={(editor) => {
                     if (containerRef.current) {
                         setupImageOpening(containerRef.current, false);
@@ -482,6 +536,7 @@ export default function EditableText({ note, parentComponent, ntxId, noteContext
                         setEditorNoteId(editor, contentNoteIdRef.current);
                     }
                     editor.setData(contentRef.current);
+                    refreshPlacedPropertyNames(editor);
                     parentComponent?.triggerEvent("textEditorRefreshed", { ntxId, editor });
 
                 }}

@@ -469,6 +469,12 @@ function renderText(result: Result, note: SNote | BNote, options: ShareRenderOpt
         }
     }
 
+    // Hydrate property blocks from this note's attributes before includes are expanded, so an
+    // included note's own property rows (already filled by its getContent) are not rewritten.
+    renderPropertyBlocks(document, note, (noteId) =>
+        note instanceof BNote ? becca.getNote(noteId) : shaca.getNote(noteId)
+    );
+
     // Process include notes. The share view renders only the first level of inclusion; static export
     // (expandNestedIncludes) keeps expanding recursively. seenNoteIds tracks the current ancestor
     // path (cloned per descent below) so the recursive path can break cycles without treating a note
@@ -738,6 +744,43 @@ function renderSpreadsheet(result: Result) {
         result.isEmpty = true;
     } else {
         result.content = renderSpreadsheetToHtml(result.content);
+    }
+}
+
+function renderPropertyBlocks(
+    document: HTMLElement,
+    note: SNote | BNote,
+    getNote: GetNoteFunction
+) {
+    for (const section of document.querySelectorAll("section.property-block")) {
+        const attrType = section.getAttribute("data-trilium-attr-type");
+        const attrName = section.getAttribute("data-trilium-attr-name");
+        if (!attrType || !attrName) {
+            continue;
+        }
+
+        const title = escapeHtml(attrName);
+        if (attrType === "relation") {
+            const chips = note.getOwnedRelations(attrName)
+                .map((attr) => attr.value)
+                .filter(Boolean)
+                .map((noteId) => {
+                    const target = getNote(noteId);
+                    const label = escapeHtml(target?.title ?? noteId);
+                    return `<span class="property-block-chip"><a class="reference-link" href="#root/${escapeHtml(noteId)}">${label}</a></span>`;
+                })
+                .join("");
+            section.innerHTML =
+                `<div class="property-block-row"><span class="property-block-name">${title}</span>`
+                + `<span class="property-block-values">${chips}</span></div>`;
+        } else {
+            const values = note.getOwnedLabels(attrName)
+                .map((attr) => `<span class="property-block-text-value">${escapeHtml(attr.value)}</span>`)
+                .join("");
+            section.innerHTML =
+                `<div class="property-block-row"><span class="property-block-name">${title}</span>`
+                + `<span class="property-block-values">${values}</span></div>`;
+        }
     }
 }
 

@@ -868,4 +868,20 @@ describe("Markdown export", () => {
         });
     });
 
+    it("keeps an empty property block as a named fallback", () => {
+        expect(markdownExportService.toMarkdown(
+            '<p>before</p>'
+            + '<section class="property-block" data-trilium-attr-type="relation" data-trilium-attr-name="associated"></section>'
+            + '<p>after</p>'
+        )).toBe("before\n\n**associated:**\n\nafter");
+    });
+
+    it("keeps a filled property block as a named line of values", () => {
+        expect(markdownExportService.toMarkdown(
+            '<section class="property-block" data-trilium-attr-type="relation" data-trilium-attr-name="associated">'
+            + '<a class="reference-link" href="#root/abc">Other</a>'
+            + '</section>'
+        )).toBe("**associated:** <a class=\"reference-link\" href=\"#root/abc\">Other</a>");
+    });
+
 });

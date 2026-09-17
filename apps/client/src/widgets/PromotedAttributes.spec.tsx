@@ -33,7 +33,10 @@ vi.mock("./attribute_widgets/relation_values_input", () => ({
 // The grid follows the note the tab shows; the tests hand it one directly. The context object is
 // held stable: the grid rebuilds its cells when the context changes, told apart by identity.
 const shownNote = vi.hoisted(() => ({ current: null as FNote | null }));
-const noteContext = vi.hoisted(() => ({ viewScope: { viewMode: "default" } }));
+const noteContext = vi.hoisted(() => ({
+    viewScope: { viewMode: "default" },
+    getContextData: () => undefined
+}));
 vi.mock("./react/hooks", async (importOriginal) => ({
     ...(await importOriginal<typeof import("./react/hooks")>()),
     useNoteContext: () => ({
@@ -329,6 +332,26 @@ describe("PromotedAttributes", () => {
         const names = [ ...container.querySelectorAll(".promoted-attribute-cell > label") ]
             .map((label) => label.textContent);
         expect(names).toEqual([ "visited" ]);
+    });
+
+    it("omits attributes the note body already places as property blocks", async () => {
+        const note = buildNote({
+            title: "Page",
+            content: `<section class="property-block" data-trilium-attr-type="label" data-trilium-attr-name="tags"></section>`,
+            "#label:tags": "promoted,multi,text",
+            "#tags": "alpha",
+            "#label:status": "promoted,single,text",
+            "#status": "open"
+        });
+        mount(note);
+
+        await act(async () => {
+            await note.getBlob();
+        });
+
+        const names = [ ...container.querySelectorAll(".promoted-attribute-cell > label") ]
+            .map((label) => label.textContent);
+        expect(names).toEqual([ "status" ]);
     });
 
     it("keeps the grid empty for a table view, whose cells already edit the same fields", () => {
