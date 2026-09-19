@@ -30,6 +30,10 @@ export const ATTR_HELP: AttrHelpMap = {
         customFont: t("attribute_detail.custom_font"),
         cssClass: t("attribute_detail.css_class"),
         iconClass: t("attribute_detail.icon_class"),
+        searchTitle: {
+            description: t("attribute_detail.search_title"),
+            helpPage: "l7pigIGu01K2"
+        },
         pageSize: t("attribute_detail.page_size"),
         customRequestHandler: { description: t("attribute_detail.custom_request_handler"), helpPage: "J5Ex1ZrMbyJ6" },
         customResourceProvider: { description: t("attribute_detail.custom_resource_provider"), helpPage: "J5Ex1ZrMbyJ6" },

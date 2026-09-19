@@ -7,34 +7,56 @@ div.note-title-widget {
     flex-grow: 1000;
     height: auto;
     contain: unset;
+    position: relative;
 }
 
-.note-title-widget input.note-title {
+.note-title-widget .note-title {
     font-size: var(--note-title-size);
     border: 0;
     border-radius: 0;
     min-width: 5em;
     width: 100%;
-    line-height: 1;
+    line-height: 1.15;
     padding-block: 0;
     padding-inline: var(--note-title-padding-inline);
+    outline: none;
+    white-space: normal;
+    overflow: visible;
 
-    &::selection {
+    .table,
+    table,
+    figure,
+    .footnote-section,
+    .math-tex {
+        font-size: 0.55em;
+        max-width: 100%;
+    }
+
+    &[data-empty="true"]:not(:focus-within)::before {
+        content: attr(data-placeholder);
+        color: var(--muted-text-color);
+        pointer-events: none;
+    }
+
+    &::selection,
+    *::selection {
         color: var(--main-text-color);
         background: var(--selection-background-color);
     }
 }
 
-.note-title-widget input.note-title[readonly] {
+.note-title-widget .note-title.ck-focused,
+.note-title-widget .note-title.ck-editor__editable {
     background: inherit;
-    outline: none;
+    box-shadow: none;
+    border: 0;
 }
 
-.note-title-widget input.note-title.protected {
+.note-title-widget .note-title.protected {
     text-shadow: 4px 4px 4px var(--muted-text-color);
 }
 
-body.mobile .note-title-widget input.note-title {
+body.mobile .note-title-widget .note-title {
     --note-title-padding-inline: 0;
 }
 
@@ -104,15 +126,15 @@ body.experimental-feature-new-layout {
         }
     }
 
-    .note-title-widget {
-        input.note-title {
-            --input-focus-background: transparent;
-            --input-focus-outline-color: transparent;
-            --input-hover-background: transparent;
-            --input-hover-color: initial;
-            --input-focus-color: initial;
+        .note-title-widget {
+            .note-title {
+                --input-focus-background: transparent;
+                --input-focus-outline-color: transparent;
+                --input-hover-background: transparent;
+                --input-hover-color: initial;
+                --input-focus-color: initial;
+            }
         }
-    }
 
     &.mobile .title-row {
         .icon-action:not(.note-icon) {

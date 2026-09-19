@@ -20,19 +20,27 @@ To rename a note, simply click into the title field and type. Changes are saved 
 You can also begin editing the title directly from the <a class="reference-link" href="../UI%20Elements/Note%20Tree.md">Note Tree</a> by selecting a note and pressing <kbd>Enter</kbd> (see _Edit note title_ in <a class="reference-link" href="../Keyboard%20Shortcuts.md">Keyboard Shortcuts</a>), which focuses the title field for the active note.
 
 > [!NOTE]
-> Titles may contain any characters, including Unicode and emoji. For security, any HTML in the title is stripped automatically, so the title is always treated as plain text.
+> The heading is the same rich-text editor as the note body (balloon toolbar): italic, math, footnotes, tables, images and the rest of the text tools. Search uses a cleaned copy of that heading (markup removed). To make search use a completely different string, set `#searchTitle`.
 
 ### Easily navigating between the title and the content
 
-When the cursor is in the title field, pressing <kbd>Enter</kbd> moves focus into the note's content. For <a class="reference-link" href="../../Note%20Types/Text.md">Text</a> notes this also inserts a fresh empty paragraph at the very top of the document, so you can start writing immediately — much like other note-taking apps.
-
-This makes it possible to create a note, type its title, press <kbd>Enter</kbd>, and continue straight into the body without reaching for the mouse.
+When the cursor is in the title field, <kbd>Enter</kbd> inserts a new paragraph there (so a table cell or a footnote can be edited). Press <kbd>Ctrl</kbd>+<kbd>Enter</kbd> (Cmd on macOS) to move focus into the note's content. For <a class="reference-link" href="../../Note%20Types/Text.md">Text</a> notes this also inserts a fresh empty paragraph at the very top of the document.
 
 ### Working with new notes
 
 When you create a new note it's given a default title (_new note_) which is pre-selected, so you can type a name right away to replace it. The default title for new notes can be customized per-section — see <a class="reference-link" href="../../Advanced%20Usage/Default%20Note%20Title.md">Default Note Title</a>.
 
 If you decide you don't want the note after all, pressing <kbd>Escape</kbd> while the title of a freshly created note is still focused will discard it.
+
+### Formatted titles and extra search names
+
+The heading at the top of the note is a full rich-text field. Click it to open the balloon toolbar and insert italic, math (including display blocks), footnotes, tables and anything else the text editor offers. The note tree, tabs and links show a compact text form of that heading instead of embedding a table in every row.
+
+Search throws that formatting away and matches the remaining letters, so *Rosa canina* is found as `Rosa canina`.
+
+When search should use a **different** name entirely (a common name, another language, an abbreviation), add `#searchTitle`. That label replaces the cleaned heading for title matching. You can add more than one.
+
+Example: heading *Rosa canina* with `#searchTitle="dog rose"` is ranked under `dog rose`.
 
 ### Automatically generated titles
 

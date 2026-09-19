@@ -792,7 +792,9 @@
     "hoisted_note": "The note to hoist to when a launcher opens its target.",
     "share_logo": "An image note used as the logo of the shared page. It has to sit inside the shared subtree.",
     "share_open_graph_image_relation": "An image note served as the <code>og:image</code> of the shared page. Set the label of the same name instead to point at an address.",
-    "share_html": "An HTML note injected into the shared page, where <code>#shareHtmlLocation</code> on that note says. It has to sit inside the shared subtree."
+    "share_html": "An HTML note injected into the shared page, where <code>#shareHtmlLocation</code> on that note says. It has to sit inside the shared subtree.",
+    "display_title": "Formatted heading shown instead of the plain title. Use *italics*, **bold**, or <sub>/<sup> tags. The visible text must match the note title.",
+    "search_title": "Replaces the auto-cleaned heading for search when the lookup name is not the heading. Repeatable."
   },
   "attribute_editor": {
     "help_text_body1": "To add label, just type e.g. <code>#rock</code> or if you want to add also value then e.g. <code>#year = 2020</code>",

@@ -1,4 +1,4 @@
-import { trimIndentation } from "@triliumnext/commons";
+import { formatNoteDisplayTitle, trimIndentation } from "@triliumnext/commons";
 import { sanitize, utils } from "@triliumnext/core";
 import ejs from "ejs";
 import { parse } from "node-html-parser";
@@ -344,12 +344,12 @@ describe("content_renderer", () => {
                 expect(content).toStrictEqual("<p>Foo</p>");
             });
 
-            it("properly escapes note title", () => {
+            it("renders allowed title markup in reference links and escapes the rest", () => {
                 buildShareNote({
                     id: "MSkxxCFbBsYP",
                     title: "The quick <strong>brown</strong> fox"
                 });
-                const note = buildShareNote({
+                const formatted = buildShareNote({
                     id: "note",
                     content: trimIndentation`\
                         <p>
@@ -359,12 +359,22 @@ describe("content_renderer", () => {
                         </p>
                     `
                 });
-                const result = getContent(note);
-                expect(result.content).toStrictEqual(trimIndentation`\
+                expect(getContent(formatted).content).toStrictEqual(trimIndentation`\
                     <p>
-                        <a class="reference-link type-text" href="./MSkxxCFbBsYP"><span><span class="tn-icon bx bx-note"></span>The quick &lt;strong&gt;brown&lt;/strong&gt; fox</span></a>
+                        <a class="reference-link type-text" href="./MSkxxCFbBsYP"><span><span class="tn-icon bx bx-note"></span>The quick <strong>brown</strong> fox</span></a>
                     </p>
                 `);
+
+                buildShareNote({
+                    id: "hostileTitle",
+                    title: "<script>alert(1)</script>"
+                });
+                const hostile = buildShareNote({
+                    id: "note2",
+                    content: `<p><a class="reference-link" href="#root/hostileTitle">Hi</a></p>`
+                });
+                expect(getContent(hostile).content).not.toContain("<script>");
+                expect(getContent(hostile).content).not.toContain("alert(1)");
             });
         });
     });
@@ -680,6 +690,7 @@ describe("content_renderer", () => {
                 subRoot: { note: subRootNote },
                 ancestors: [],
                 sanitizeUrl: sanitize.sanitizeUrl,
+                formatNoteDisplayTitle,
                 iconPackSupportedPrefixes: [],
                 t: (key: string) => key
             });
@@ -731,6 +742,7 @@ describe("content_renderer", () => {
                 isDev: false,
                 utils,
                 sanitizeUrl: sanitize.sanitizeUrl,
+                formatNoteDisplayTitle,
                 subRoot: { note },
                 rootNoteId: noteId,
                 cssToLoad: [],

@@ -1965,6 +1965,40 @@ export function useNoteTitle(noteId: string | undefined, parentNoteId: string | 
     return title;
 }
 
+export function useNoteTitleHtml(noteId: string | undefined, parentNoteId: string | undefined) {
+    const [ titleHtml, setTitleHtml ] = useState<string>();
+    const requestIdRef = useRef(0);
+
+    const refresh = useCallback(() => {
+        const requestId = ++requestIdRef.current;
+        if (!noteId) return;
+        tree.getNoteTitleHtml(noteId, parentNoteId).then(html => {
+            if (requestId !== requestIdRef.current) return;
+            setTitleHtml(html);
+        });
+    }, [ noteId, parentNoteId ]);
+
+    useEffect(() => {
+        refresh();
+    }, [ refresh ]);
+
+    useTriliumEvent("protectedSessionStarted", () => {
+        refresh();
+    });
+
+    useTriliumEvent("entitiesReloaded", useCallback(({ loadResults }) => {
+        if (
+            loadResults.isNoteReloaded(noteId)
+            || (parentNoteId && loadResults.getBranchRows().some(
+                (b) => b.noteId === noteId && b.parentNoteId === parentNoteId
+            ))
+        ) {
+            refresh();
+        }
+    }, [noteId, parentNoteId, refresh]));
+    return titleHtml;
+}
+
 export function useNoteIcon(note: FNote | null | undefined) {
     const [ icon, setIcon ] = useState(note?.getIcon());
     const iconClass = useNoteLabel(note, "iconClass");

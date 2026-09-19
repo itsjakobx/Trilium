@@ -1,4 +1,4 @@
-import { ALLOWED_PROTOCOLS } from "@triliumnext/commons";
+import { ALLOWED_PROTOCOLS, formatDisplayTitle } from "@triliumnext/commons";
 
 import appContext, { type NoteCommandData } from "../components/app_context.js";
 import { openInCurrentNoteContext } from "../components/note_context.js";
@@ -207,9 +207,18 @@ async function createLink(notePath: string | undefined, options: CreateLinkOptio
     });
 
     const $noteLink = $("<a>", {
-        href: hash,
-        text: linkTitle
+        href: hash
     });
+
+    if (options.title !== undefined) {
+        $noteLink.text(options.title);
+    } else if (note && viewMode === "default") {
+        const branchId = parentNoteId ? note.parentToBranch[parentNoteId] : undefined;
+        const prefix = branchId ? froca.getBranch(branchId)?.prefix : null;
+        $noteLink.html(formatDisplayTitle(note.title, prefix || null));
+    } else {
+        $noteLink.text(linkTitle ?? "");
+    }
 
     if (!showTooltip) {
         $noteLink.addClass("no-tooltip-preview");
@@ -656,8 +665,13 @@ async function loadReferenceLinkTitle($el: JQuery<HTMLElement>, href: string | n
     }
 
     const title = await getReferenceLinkTitle(href);
-    // A column reference renders as "<board>: <column>", the column in a `<small>` below.
-    $el.text(viewScope?.columnTitle ? `${title}:` : title);
+    if (viewScope?.columnTitle) {
+        $el.text(`${title}:`);
+    } else if (note && viewScope?.viewMode !== "attachments") {
+        $el.html(formatDisplayTitle(note.title));
+    } else {
+        $el.text(title);
+    }
 
     if (viewScope?.bookmark) {
         $el.append($("<small>").append(

@@ -12,6 +12,7 @@ import noteService from "../../services/notes.js";
 import { getSql } from "../../services/sql/index";
 import TaskContext from "../../services/task_context.js";
 import treeService from "../../services/tree.js";
+import { sanitizeHtml } from "../../services/sanitizer.js";
 import { randomString } from "../../services/utils/index";
 
 /**
@@ -326,7 +327,7 @@ function setNoteTypeMime(req: Request<{ noteId: string }>) {
 
 function changeTitle(req: Request<{ noteId: string }>) {
     const noteId = req.params.noteId;
-    const title = req.body.title;
+    const title = sanitizeHtml(req.body.title);
 
     const note = becca.getNoteOrThrow(noteId);
 

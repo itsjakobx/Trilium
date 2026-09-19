@@ -5,7 +5,7 @@ import "jquery.fancytree/dist/modules/jquery.fancytree.filter.js";
 import "../stylesheets/tree.css";
 import "./note_tree.css";
 
-import { GEO_LOCATION_ATTRIBUTE } from "@triliumnext/commons";
+import { formatDisplayTitle, GEO_LOCATION_ATTRIBUTE } from "@triliumnext/commons";
 
 import appContext, { type CommandListenerData, type EventData } from "../components/app_context.js";
 import type { SetNoteOpts } from "../components/note_context.js";
@@ -823,14 +823,12 @@ export default class NoteTreeWidget extends NoteContextAwareWidget {
             return;
         }
 
-        const title = `${branch.prefix ? `${branch.prefix} - ` : ""}${note.title}`;
-
         node.data.isProtected = note.isProtected;
         node.data.noteType = note.type;
         node.folder = note.isFolder();
         node.icon = note.getIcon();
         node.extraClasses = this.getExtraClasses(note);
-        node.title = utils.escapeHtml(title);
+        node.title = treeNodeTitleHtml(note, branch);
 
         if (node.isExpanded() !== branch.isExpanded) {
             await node.setExpanded(branch.isExpanded, { noEvents: true, noAnimation: true });
@@ -847,8 +845,6 @@ export default class NoteTreeWidget extends NoteContextAwareWidget {
             return null;
         }
 
-        const title = `${branch.prefix ? `${branch.prefix} - ` : ""}${note.title}`;
-
         const isFolder = note.isFolder();
 
         const node: Fancytree.FancytreeNewNode = {
@@ -857,7 +853,7 @@ export default class NoteTreeWidget extends NoteContextAwareWidget {
             branchId: branch.branchId,
             isProtected: note.isProtected,
             noteType: note.type,
-            title: utils.escapeHtml(title),
+            title: treeNodeTitleHtml(note, branch),
             extraClasses: this.getExtraClasses(note),
             icon: note.getIcon(),
             refKey: note.noteId,
@@ -2037,3 +2033,7 @@ function patchScrollIntoViewCrash() {
 }
 
 patchScrollIntoViewCrash();
+
+function treeNodeTitleHtml(note: FNote, branch: FBranch): string {
+    return formatDisplayTitle(note.title, branch.prefix || null);
+}

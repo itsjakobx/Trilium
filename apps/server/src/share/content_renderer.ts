@@ -1,4 +1,10 @@
-import { extractYouTubeVideoId, isHttpUrl, safeLinkPreviewHref, safeLinkPreviewImageSrc } from "@triliumnext/commons";
+import {
+    extractYouTubeVideoId,
+    formatNoteDisplayTitle,
+    isHttpUrl,
+    safeLinkPreviewHref,
+    safeLinkPreviewImageSrc
+} from "@triliumnext/commons";
 import { renderToHtml as renderMarkdownToHtml } from "@triliumnext/commons/src/lib/markdown_renderer.js";
 import { renderSpreadsheetToHtml } from "@triliumnext/commons/src/lib/spreadsheet/render_to_html.js";
 import { type BAttachment, type BBranch, becca, BNote, getLog, icon_packs as iconPackService, options, sanitize, task_states, utils } from "@triliumnext/core";
@@ -226,6 +232,7 @@ function renderNoteContentInternal(note: SNote | BNote, renderArgs: RenderArgs) 
         isDev,
         utils,
         sanitizeUrl: sanitize.sanitizeUrl,
+        formatNoteDisplayTitle,
         ...renderArgs,
     };
 
@@ -627,7 +634,7 @@ function cleanUpReferenceLinks(linkEl: HTMLElement, getNote: GetNoteFunction) {
     } else if (note.isProtected) {
         linkEl.innerHTML = "[protected]";
     } else {
-        linkEl.innerHTML = `<span><span class="${escapeHtml(note.getIcon())}"></span>${utils.escapeHtml(note.title)}</span>`;
+        linkEl.innerHTML = `<span><span class="${escapeHtml(note.getIcon())}"></span>${formatNoteDisplayTitle(note)}</span>`;
     }
 }
 

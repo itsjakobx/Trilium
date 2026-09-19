@@ -17,6 +17,14 @@ span.fancytree-node.fancytree-hide {
     overflow: hidden;
     margin-inline-start: 7px;
     outline: none;
+
+    em, i {
+        font-style: italic;
+    }
+
+    strong, b {
+        font-weight: 600;
+    }
 }
 
 .fancytree-expander {

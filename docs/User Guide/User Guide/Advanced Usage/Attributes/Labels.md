@@ -58,6 +58,7 @@ This is a list of labels that Trilium natively supports.
 | `customFont` | Marks a font as selectable in the Options → Appearance font selection. See <a class="reference-link" href="../../Basic%20Concepts%20and%20Features/Themes/Personalizing%20the%20font.md">Personalizing the font</a>. |
 | `cssClass` | Value of this label is then added as CSS class to the node representing given note in the <a class="reference-link" href="../../Basic%20Concepts%20and%20Features/UI%20Elements/Note%20Tree.md">Note Tree</a>. This can be useful for advanced theming. Can be used in template notes. |
 | `iconClass` | value of this label is added as a CSS class to the icon on the tree which can help visually distinguish the notes in the tree. Example might be bx bx-home - icons are taken from boxicons. Can be used in template notes. |
+| `searchTitle` | Replaces the auto-cleaned heading for search. Repeatable. Leave it off to search by the heading with formatting stripped. See <a class="reference-link" href="../../Basic%20Concepts%20and%20Features/Notes/Title.md">Title</a>. |
 | `pageSize` | Specifies the number of items per page in <a class="reference-link" href="../../Basic%20Concepts%20and%20Features/Notes/Note%20List.md">Note List</a>. |
 | `customRequestHandler` | See <a class="reference-link" href="../Custom%20Request%20Handler.md">Custom Request Handler</a>. |
 | `customResourceProvider` | See <a class="reference-link" href="../Custom%20Resource%20Providers.md">Custom Resource Providers</a>. |

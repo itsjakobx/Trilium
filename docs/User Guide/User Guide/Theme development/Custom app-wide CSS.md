@@ -43,7 +43,7 @@ To change the color of the note title and the icon (above the content):
 
 ```
 .note-split.my-workspace .note-icon-widget button.note-icon,
-.note-split.my-workspace .note-title-widget input.note-title {
+.note-split.my-workspace .note-title-widget .note-title {
     color: #ff0000;
 }
 ```

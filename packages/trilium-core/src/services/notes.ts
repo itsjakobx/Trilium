@@ -179,9 +179,8 @@ function getNewNoteTitle(parentNote: BNote) {
         );
     }
 
-    // this isn't in theory a good place to sanitize title, but this will catch a lot of XSS attempts.
-    // title is supposed to contain text only (not HTML) and be printed text only, but given the number of usages,
-    // it's difficult to guarantee correct handling in all cases
+    // Titles store CKEditor HTML (math, tables, footnotes). sanitizeHtml keeps that markup and
+    // strips XSS the heading would otherwise render in the tree, tabs and share page.
     title = sanitizeHtml(title);
 
     return title;

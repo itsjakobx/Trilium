@@ -1,8 +1,11 @@
-import ws from "./ws.js";
-import utils from "./utils.js";
+import { formatDisplayTitle } from "@triliumnext/commons";
+
+import appContext from "../components/app_context.js";
+import type FNote from "../entities/fnote.js";
 import froca from "./froca.js";
 import hoistedNoteService from "./hoisted_note.js";
-import appContext from "../components/app_context.js";
+import utils from "./utils.js";
+import ws from "./ws.js";
 
 export const NOTE_PATH_TITLE_SEPARATOR = " › ";
 
@@ -210,18 +213,40 @@ async function getNoteTitle(noteId: string, parentNoteId: string | null = null) 
     let { title } = note;
 
     if (parentNoteId !== null) {
-        const branchId = note.parentToBranch[parentNoteId];
-
-        if (branchId) {
-            const branch = froca.getBranch(branchId);
-
-            if (branch?.prefix) {
-                title = `${branch.prefix} - ${title}`;
-            }
+        const prefix = getBranchPrefix(note, parentNoteId);
+        if (prefix) {
+            title = `${prefix} - ${title}`;
         }
     }
 
     return title;
+}
+
+function getBranchPrefix(note: FNote, parentNoteId: string | null): string | null {
+    if (!parentNoteId) {
+        return null;
+    }
+    const branchId = note.parentToBranch[parentNoteId];
+    if (!branchId) {
+        return null;
+    }
+    return froca.getBranch(branchId)?.prefix ?? null;
+}
+
+/** Safe HTML for a note's title, including inline `*` / tag markup and a branch prefix. */
+function formatNoteTitleHtml(note: FNote, parentNoteId: string | null = null): string {
+    return formatDisplayTitle(
+        note.title,
+        getBranchPrefix(note, parentNoteId)
+    );
+}
+
+async function getNoteTitleHtml(noteId: string, parentNoteId: string | null = null) {
+    const note = await froca.getNote(noteId);
+    if (!note) {
+        return "[not found]";
+    }
+    return formatNoteTitleHtml(note, parentNoteId);
 }
 
 async function getNotePathTitleComponents(notePath: string) {
@@ -309,6 +334,8 @@ export default {
     getNoteIdAndParentIdFromUrl,
     getBranchIdFromUrl,
     getNoteTitle,
+    getNoteTitleHtml,
+    formatNoteTitleHtml,
     getNotePathTitle,
     getNoteTitleWithPathAsSuffix,
     isNotePathInHiddenSubtree,

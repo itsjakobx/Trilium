@@ -113,13 +113,13 @@ body.mobile .modal.popup-editor-dialog .modal-dialog {
 }
 
 .modal.popup-editor-dialog .note-icon-widget button.note-icon,
-.modal.popup-editor-dialog .note-title-widget input.note-title,
+.modal.popup-editor-dialog .note-title-widget .note-title,
 .modal.tree-popup-editor-dialog .note-icon-widget button.note-icon,
-.modal.tree-popup-editor-dialog .note-title-widget input.note-title,
+.modal.tree-popup-editor-dialog .note-title-widget .note-title,
 .modal.calendar-event-sheet .note-icon-widget button.note-icon,
-.modal.calendar-event-sheet .note-title-widget input.note-title,
+.modal.calendar-event-sheet .note-title-widget .note-title,
 .modal.geo-detail-sheet .note-icon-widget button.note-icon,
-.modal.geo-detail-sheet .note-title-widget input.note-title {
+.modal.geo-detail-sheet .note-title-widget .note-title {
     font-size: 1em;
 }
 

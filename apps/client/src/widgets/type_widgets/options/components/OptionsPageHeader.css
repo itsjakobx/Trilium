@@ -53,7 +53,7 @@
 .options-page-header-title {
     margin: 0;
     font-size: 1.4rem;
-    /* Match the note's own title chrome (input.note-title, which inherits the normal body weight)
+    /* Match the note's own title chrome (.note-title, which inherits the normal body weight)
        shown when the page is opened standalone, rather than the browser's bold <h2> default. */
     font-weight: normal;
     overflow: hidden;

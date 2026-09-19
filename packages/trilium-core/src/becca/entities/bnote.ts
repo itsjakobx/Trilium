@@ -1,5 +1,5 @@
 import type { AttachmentRow, AttributeType, CloneResponse, EraseExcessRevisionsOptions, NoteRow, NoteType, RevisionRow, RevisionSource } from "@triliumnext/commons";
-import { dayjs, getNoteIcon } from "@triliumnext/commons";
+import { dayjs, getNoteIcon, searchableTitleText } from "@triliumnext/commons";
 
 import cloningService from "../../services/cloning.js";
 import dateUtils from "../../services/utils/date.js";
@@ -802,6 +802,10 @@ class BNote extends AbstractBeccaEntity<BNote> {
             }
 
             this.__flatTextCache += `${this.title} `;
+            const plainTitle = searchableTitleText(this.title);
+            if (plainTitle !== this.title) {
+                this.__flatTextCache += `${plainTitle} `;
+            }
 
             for (const attr of this.getAttributes()) {
                 // it's best to use space as separator since spaces are filtered from the search string by the tokenization into words
@@ -823,10 +827,15 @@ class BNote extends AbstractBeccaEntity<BNote> {
     /**
      * The title normalized for search, plus its punctuation-stripped words. Scoring reads both for
      * every match it ranks, so they are derived once per title rather than once per result.
+     * Markup in the heading is stripped. `#searchTitle` replaces that cleaned heading for scoring.
      */
     getSearchableTitle(): SearchableTitle {
         if (!this.__searchableTitleCache) {
-            const normalized = normalizeSearchText(this.title);
+            const combined = searchableTitleText(
+                this.title,
+                this.getOwnedLabelValues("searchTitle")
+            );
+            const normalized = normalizeSearchText(combined);
             this.__searchableTitleCache = { normalized, words: tokenizeNormalizedText(normalized) };
         }
 

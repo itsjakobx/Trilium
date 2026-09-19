@@ -22,6 +22,7 @@ export * from "./lib/note_type_ids.js";
 export * from "./lib/promoted_attribute_definition_parser.js";
 export { default as promotedAttributeDefinitionParser } from "./lib/promoted_attribute_definition_parser.js";
 export * from "./lib/utils.js";
+export * from "./lib/display_title.js";
 export * from "./lib/dayjs.js";
 export * from "./lib/notes.js";
 export * from "./lib/onenote.js";

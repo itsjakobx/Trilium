@@ -54,9 +54,10 @@ interface CKEditorWithWatchdogProps extends Pick<HTMLProps<HTMLDivElement>, "cla
     editorApi: RefObject<CKEditorApi>;
     templates: SnippetDefinition[];
     containerRef?: RefObject<HTMLDivElement>;
+    placeholder?: string;
 }
 
-export default function CKEditorWithWatchdog({ containerRef: externalContainerRef, contentLanguage, className, tabIndex, isClassicEditor, watchdogRef: externalWatchdogRef, watchdogConfig, onNotificationWarning, onWatchdogStateChange, onChange, onEditorInitialized, editorApi, templates }: CKEditorWithWatchdogProps) {
+export default function CKEditorWithWatchdog({ containerRef: externalContainerRef, contentLanguage, className, tabIndex, isClassicEditor, watchdogRef: externalWatchdogRef, watchdogConfig, onNotificationWarning, onWatchdogStateChange, onChange, onEditorInitialized, editorApi, templates, placeholder }: CKEditorWithWatchdogProps) {
     const containerRef = useSyncedRef<HTMLDivElement>(externalContainerRef, null);
     const watchdogRef = useRef<EditorWatchdog>(null);
     // Serializes editor build/teardown so overlapping effect runs never operate on the same
@@ -283,7 +284,8 @@ export default function CKEditorWithWatchdog({ containerRef: externalContainerRe
                     uiLanguage: uiLanguage as DISPLAYABLE_LOCALE_IDS,
                     contentLanguage: contentLanguage ?? null,
                     templates: templatesRef.current,
-                    getNoteLocation: () => noteLocationRef.current
+                    getNoteLocation: () => noteLocationRef.current,
+                    placeholder
                 });
 
                 if (isStale) {
@@ -346,7 +348,7 @@ export default function CKEditorWithWatchdog({ containerRef: externalContainerRe
         contentLanguage, uiLanguage, isClassicEditor, multilineToolbar,
         doubleQuoteStyle, singleQuoteStyle, punctuationReplacements, mathReplacements, symbolReplacements,
         customReplacements, defaultContentLanguage, htmlSupportEnabled, allowedHtmlTags,
-        aiEnabled, llmProviders
+        aiEnabled, llmProviders, placeholder
     ]);
 
     // Push snippet ("template") definitions into the live editor instead of rebuilding it. The premium

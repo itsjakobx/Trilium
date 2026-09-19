@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "preact/hooks";
 
 import link, { calculateHash, ViewScope } from "../../services/link";
 import tree from "../../services/tree";
-import { useImperativeSearchHighlighlighting, useNote, useNoteColorClass, useNoteIcon, useNoteLabelBoolean, useNoteTitle, useTriliumEvent } from "./hooks";
+import { useImperativeSearchHighlighlighting, useNote, useNoteColorClass, useNoteIcon, useNoteLabelBoolean, useNoteTitleHtml, useTriliumEvent } from "./hooks";
 import Icon from "./Icon";
 
 interface NoteLinkOpts {
@@ -106,7 +106,7 @@ export function NewNoteLink({ notePath, viewScope, noContextMenu, showNoteIcon, 
     const { noteId, parentNoteId } = tree.getNoteIdAndParentIdFromUrl(notePath);
     const note = useNote(noteId);
 
-    const title = useNoteTitle(noteId, parentNoteId);
+    const title = useNoteTitleHtml(noteId, parentNoteId);
     const icon = useNoteIcon(showNoteIcon ? note : null);
     const colorClass = useNoteColorClass(note);
     const [ archived ] = useNoteLabelBoolean(note, "archived");
@@ -122,7 +122,7 @@ export function NewNoteLink({ notePath, viewScope, noContextMenu, showNoteIcon, 
             {...linkProps}
         >
             {icon && <><Icon icon={icon} />&nbsp;</>}
-            {title}
+            <span dangerouslySetInnerHTML={{ __html: title ?? "" }} />
         </a>
     );
 }

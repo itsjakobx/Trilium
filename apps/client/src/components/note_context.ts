@@ -1,5 +1,6 @@
 import type { CKTextEditor } from "@triliumnext/ckeditor5";
 import type CodeMirror from "@triliumnext/codemirror";
+import { plainTitleText } from "@triliumnext/commons";
 
 import type FNote from "../entities/fnote.js";
 import { closeActiveDialog } from "../services/dialog.js";
@@ -576,8 +577,9 @@ class NoteContext extends Component implements EventListener<"entitiesReloaded">
 
         const { note, viewScope } = this;
 
+        const heading = plainTitleText(note.title);
         const isNormalView = (viewScope?.viewMode === "default" || viewScope?.viewMode === "contextual-help");
-        let title = (isNormalView ? note.title : `${note.title}: ${viewScope?.viewMode}`);
+        let title = (isNormalView ? heading : `${heading}: ${viewScope?.viewMode}`);
 
         if (viewScope?.attachmentId) {
             // assuming the attachment has been already loaded

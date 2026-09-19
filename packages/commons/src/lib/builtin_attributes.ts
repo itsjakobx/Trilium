@@ -96,6 +96,8 @@ const BUILTIN_ATTRIBUTES = [
     { type: "label", name: "autoReadOnlyDisabled", valueType: "boolean" },
     { type: "label", name: "cssClass", valueType: "text" },
     { type: "label", name: "iconClass", valueType: "text" },
+    // Extra search strings for a note whose heading is not how you look it up.
+    { type: "label", name: "searchTitle", valueType: "text", hasUserValue: true },
     { type: "label", name: "keyboardShortcut", valueType: "text" },
     { type: "label", name: "run", valueType: "text", isDangerous: true },
     { type: "label", name: "runOnInstance", valueType: "text", isDangerous: false },

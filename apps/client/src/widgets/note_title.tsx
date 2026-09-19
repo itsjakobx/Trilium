@@ -1,44 +1,63 @@
 import "./note_title.css";
 
+import { CKTextEditor, EditorWatchdog, SnippetDefinition } from "@triliumnext/ckeditor5";
+import { escapeHtml, titleToEditorData } from "@triliumnext/commons";
 import clsx from "clsx";
-import { useEffect, useRef, useState } from "preact/hooks";
+import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 
 import appContext from "../components/app_context";
 import branches from "../services/branches";
 import { t } from "../services/i18n";
 import protected_session_holder from "../services/protected_session_holder";
+import { sanitizeNoteContentHtml } from "../services/sanitize_content";
 import server from "../services/server";
-import { isIMEComposing } from "../services/shortcuts";
-import FormTextBox from "./react/FormTextBox";
-import { useNoteContext, useNoteProperty, useSpacedUpdate, useTriliumEvent, useTriliumEvents } from "./react/hooks";
+import { isHtmlEmpty } from "../services/utils";
+import { useNoteContext, useNoteLabel, useNoteProperty, useSpacedUpdate, useTriliumEvents } from "./react/hooks";
+import CKEditorWithWatchdog, { CKEditorApi } from "./type_widgets/text/CKEditorWithWatchdog";
+import { ReadOnlyTextContent } from "./type_widgets/text/ReadOnlyText";
+
+const NO_SNIPPETS: SnippetDefinition[] = [];
 
 export default function NoteTitleWidget(props: {className?: string}) {
     const { note, noteId, componentId, viewScope, noteContext, parentComponent } = useNoteContext();
     const title = useNoteProperty(note, "title", componentId);
     const isProtected = useNoteProperty(note, "isProtected");
+    const [ language ] = useNoteLabel(note, "language");
     const newTitle = useRef("");
+    const isNewNote = useRef<boolean>();
+    const pendingSelect = useRef<boolean>(false);
+    const watchdogRef = useRef<EditorWatchdog>(null);
+    const editorApiRef = useRef<CKEditorApi>(null);
+    const rootRef = useRef<HTMLDivElement>(null);
+    const titleRef = useRef(title);
+    titleRef.current = title;
 
     const [ isReadOnly, setReadOnly ] = useState<boolean>(false);
     const [ navigationTitle, setNavigationTitle ] = useState<string | null>(null);
+    const [ editing, setEditing ] = useState(false);
 
-    // Manage read-only
     useEffect(() => {
-        const isReadOnly = note === null
+        const nextReadOnly = note === null
             || note === undefined
             || (note.isProtected && !protected_session_holder.isProtectedSessionAvailable())
             || note.isMetadataReadOnly
             || viewScope?.viewMode !== "default";
-        setReadOnly(isReadOnly);
+        setReadOnly(nextReadOnly);
+        if (nextReadOnly) {
+            setEditing(false);
+        }
     }, [ note, note?.noteId, note?.isProtected, viewScope?.viewMode ]);
 
-    // Manage the title for read-only notes
     useEffect(() => {
         if (isReadOnly) {
             noteContext?.getNavigationTitle().then(setNavigationTitle);
         }
     }, [note, isReadOnly]);
 
-    // Save changes to title.
+    useEffect(() => {
+        setEditing(false);
+    }, [noteId]);
+
     const spacedUpdate = useSpacedUpdate(async () => {
         if (!note) {
             return;
@@ -47,7 +66,6 @@ export default function NoteTitleWidget(props: {className?: string}) {
         await server.put<void>(`notes/${noteId}/title`, { title: newTitle.current }, componentId);
     });
 
-    // Prevent user from navigating away if the spaced update is not done.
     useEffect(() => {
         const listener = () => spacedUpdate.isAllSavedAndTriggerUpdate();
         appContext.addBeforeUnloadListener(listener);
@@ -55,82 +73,109 @@ export default function NoteTitleWidget(props: {className?: string}) {
     }, []);
     useTriliumEvents([ "beforeNoteSwitch", "beforeNoteContextRemove" ], () => spacedUpdate.updateNowIfNecessary());
 
-    // Manage focus.
-    const textBoxRef = useRef<HTMLInputElement>(null);
-    const isNewNote = useRef<boolean>();
-    const pendingSelect = useRef<boolean>(false);
-
-    // Re-apply selection when title changes if we have a pending select.
-    // This handles the case where the server sends back entity changes after we've
-    // already called select(), which causes the controlled input to re-render and lose selection.
-    useEffect(() => {
-        if (pendingSelect.current && textBoxRef.current && document.activeElement === textBoxRef.current) {
-            textBoxRef.current.select();
-            pendingSelect.current = false;
+    const onChange = useCallback(() => {
+        const editor = watchdogRef.current?.editor;
+        if (!editor) {
+            return;
         }
-    }, [title]);
+        const data = editor.getData() ?? "";
+        newTitle.current = isHtmlEmpty(data) ? "" : data;
+        spacedUpdate.scheduleUpdate();
+    }, [spacedUpdate]);
 
-    useTriliumEvents([ "focusOnTitle", "focusAndSelectTitle" ], (e, eventName) => {
-        // When the event targets a specific context (e.g. a popup's own context, which is never
-        // "active" in the tab manager), match on it; otherwise fall back to the active context.
-        const isTargeted = e.ntxId ? e.ntxId === noteContext?.ntxId : noteContext?.isActive();
-        if (isTargeted && textBoxRef.current) {
-            // In the new layout, there are two NoteTitleWidget instances. Only handle if visible.
-            if (!textBoxRef.current.checkVisibility({ checkOpacity: true })) {
+    const onEditorInitialized = useCallback((editor: CKTextEditor) => {
+        editor.setData(titleToEditorData(titleRef.current ?? ""));
+        editor.editing.view.document.on("keydown", (evt, data) => {
+            const domEvent = data.domEvent as KeyboardEvent;
+            if (domEvent.key === "Escape" && isNewNote.current && noteContext?.isActive() && note) {
+                branches.deleteNotes(Object.values(note.parentToBranch));
                 return;
             }
-
-            textBoxRef.current.focus();
-            if (eventName === "focusAndSelectTitle") {
-                textBoxRef.current.select();
-                pendingSelect.current = true;
+            if (domEvent.key === "Enter" && (domEvent.ctrlKey || domEvent.metaKey)) {
+                data.preventDefault();
+                evt.stop();
+                parentComponent.triggerCommand("focusOnDetail", {
+                    ntxId: noteContext?.ntxId,
+                    insertNewlineAtTop: true
+                });
             }
-            isNewNote.current = ("isNewNote" in e ? e.isNewNote : false);
+        }, { priority: "high" });
+        editor.editing.view.focus();
+        if (pendingSelect.current) {
+            editor.execute("selectAll");
+            pendingSelect.current = false;
         }
+    }, [note, noteContext, parentComponent]);
+
+    useTriliumEvents([ "focusOnTitle", "focusAndSelectTitle" ], (e, eventName) => {
+        const isTargeted = e.ntxId ? e.ntxId === noteContext?.ntxId : noteContext?.isActive();
+        if (!isTargeted || isReadOnly) {
+            return;
+        }
+        if (!rootRef.current?.checkVisibility({ checkOpacity: true })) {
+            return;
+        }
+
+        pendingSelect.current = eventName === "focusAndSelectTitle";
+        isNewNote.current = ("isNewNote" in e ? e.isNewNote : false);
+        setEditing(true);
+        void focusTitleEditor(watchdogRef, pendingSelect);
     });
 
+    const previewHtml = isReadOnly
+        ? escapeHtml(navigationTitle ?? title ?? "")
+        : sanitizeNoteContentHtml(titleToEditorData(title ?? ""));
+    const titleClass = clsx("note-title", "ck-content", isProtected && "protected");
+
     return (
-        <div className={clsx("note-title-widget", props.className)}>
-            {note && <FormTextBox
-                inputRef={textBoxRef}
-                autocomplete="off"
-                currentValue={(!isReadOnly ? title : navigationTitle) ?? ""}
-                placeholder={t("note_title.placeholder")}
-                className={`note-title ${isProtected ? "protected" : ""}`}
-                tabIndex={100}
-                readOnly={isReadOnly}
-                onChange={(newValue) => {
-                    newTitle.current = newValue;
-                    spacedUpdate.scheduleUpdate();
-                }}
-                onKeyDown={(e) => {
-                    // User started typing, stop re-applying selection
-                    pendingSelect.current = false;
-
-                    // Skip processing if IME is composing to prevent interference
-                    // with text input in CJK languages
-                    if (isIMEComposing(e)) {
-                        return;
-                    }
-
-                    // Pressing Enter moves to the note content. For text notes this inserts a new empty
-                    // paragraph at the top of the document (Notion-like) rather than just focusing.
-                    if (e.key === "Enter") {
-                        e.preventDefault();
-                        parentComponent.triggerCommand("focusOnDetail", { ntxId: noteContext?.ntxId, insertNewlineAtTop: true });
-                        return;
-                    }
-
-                    if (e.key === "Escape" && isNewNote.current && noteContext?.isActive() && note) {
-                        branches.deleteNotes(Object.values(note.parentToBranch));
-                    }
-                }}
-                onBlur={() => {
-                    pendingSelect.current = false;
-                    spacedUpdate.updateNowIfNecessary();
-                    isNewNote.current = false;
-                }}
-            />}
+        <div ref={rootRef} className={clsx("note-title-widget", props.className)}>
+            {note && isReadOnly && (
+                <ReadOnlyTextContent className={titleClass} html={previewHtml} />
+            )}
+            {note && !isReadOnly && editing && (
+                <CKEditorWithWatchdog
+                    isClassicEditor={false}
+                    className={titleClass}
+                    tabIndex={100}
+                    contentLanguage={language}
+                    templates={NO_SNIPPETS}
+                    watchdogRef={watchdogRef}
+                    editorApi={editorApiRef}
+                    placeholder={t("note_title.placeholder")}
+                    onChange={onChange}
+                    onEditorInitialized={onEditorInitialized}
+                />
+            )}
+            {note && !isReadOnly && !editing && (
+                <div
+                    role="textbox"
+                    data-placeholder={t("note_title.placeholder")}
+                    data-empty={previewHtml ? "false" : "true"}
+                    className={titleClass}
+                    onFocus={() => setEditing(true)}
+                    onClick={() => setEditing(true)}
+                >
+                    <ReadOnlyTextContent html={previewHtml} />
+                </div>
+            )}
         </div>
     );
+}
+
+async function focusTitleEditor(
+    watchdogRef: { current: EditorWatchdog | null },
+    pendingSelect: { current: boolean }
+) {
+    for (let attempt = 0; attempt < 80; attempt++) {
+        const editor = watchdogRef.current?.editor;
+        if (editor) {
+            editor.editing.view.focus();
+            if (pendingSelect.current) {
+                editor.execute("selectAll");
+                pendingSelect.current = false;
+            }
+            return;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 50));
+    }
 }

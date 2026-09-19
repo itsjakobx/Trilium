@@ -39,6 +39,8 @@ export interface BuildEditorOptions {
      * here would name the note that happened to be open when it was built.
      */
     getNoteLocation?: AiNoteLocationProvider;
+    /** Overrides the empty-editor hint. The title field passes its own string. */
+    placeholder?: string;
 }
 
 export async function buildConfig(opts: BuildEditorOptions): Promise<EditorConfig> {
@@ -47,7 +49,7 @@ export async function buildConfig(opts: BuildEditorOptions): Promise<EditorConfi
     const aiAssistantStream = buildAiAssistantStream(opts.getNoteLocation);
     const config: EditorConfig = {
         licenseKey: OPEN_SOURCE_LICENSE_KEY,
-        placeholder: t("editable_text.placeholder"),
+        placeholder: opts.placeholder ?? t("editable_text.placeholder"),
         codeBlock: {
             languages: buildListOfLanguages()
         },
