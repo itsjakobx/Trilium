@@ -27,6 +27,8 @@ The image is drawn as a single picture by the graphics card, which limits how la
 
 Adding, moving and removing markers, drawing shapes, the popup view and the contextual menu work as described for the <a class="reference-link" href="../Geo%20Map.md">Geo Map</a>. The camera stays over the image and can zoom in up to four times past the image's own resolution.
 
+A marker's position is edited from the popup as two fields, x and y, in the map's own coordinates. A pair can be pasted into either field.
+
 The features that only make sense on a real map are not available on an image map:
 
 *   Searching the map and searching for places online.

@@ -193,12 +193,25 @@ On an image map, the position is stored in `#mapPosition` instead (see <a class
 
 ## Repositioning markers
 
-Once a marker is set, it can be repositioned using one of the two ways:
+Once a marker is set, it can be repositioned from the popup, or by choosing a new spot on the map.
 
-*   By right clicking the marker and selecting _Move to another location_ (<span class="tn-icon bx bx-move"></span>).
-*   By clicking the marker to open the popup and selecting the _Move to another location_ (<span class="tn-icon bx bx-move"></span>) button underneath the title bar.
+### By typing
 
-After clicking the button to move the marker, click at the desired position on the map to replace it. To cancel the operation, press Escape.
+Click the marker to open the popup. Under the title, the latitude and the longitude are each their own field.
+
+*   Type into either field, or into both, then press <kbd>Enter</kbd> or click elsewhere. The marker moves to that point. A pair copied from Google Maps or OpenStreetMap can be pasted into either field, and so can the address of a page on either site, or a `geo:` link.
+*   The copy button (<span class="tn-icon bx bx-copy"></span>) copies the full coordinates.
+
+On an image map the two fields are an x and a y in the map's own coordinates (see <a class="reference-link" href="Geo%20Map/Image%20maps.md">Image maps</a>).
+
+On a read-only map the fields are not shown. Pressing the coordinates copies them.
+
+### By clicking a new spot
+
+*   Right click the marker and select _Move to another location_ (<span class="tn-icon bx bx-move"></span>).
+*   Or click the marker to open the popup and press the _Move to another location_ (<span class="tn-icon bx bx-move"></span>) button underneath the title bar.
+
+Then click the desired position on the map. To cancel, press Escape.
 
 > [!NOTE]
 > If the map is locked for editing (see below), the map needs to be unlocked before moving the marker.
@@ -215,7 +228,7 @@ After clicking the button to move the marker, click at the desired position on t
 When a marker, a [shape](Geo%20Map/Drawing%20shapes.md), or track is clicked, a popup will open to the right which contains the following information:
 
 *   The title and icon of the marker, both editable.
-*   An indicator for the coordinates (<span class="tn-icon bx bx-crosshair"></span>); clicking it will copy the coordinates to clipboard.
+*   The latitude and longitude of the marker, each in its own field. On a map that can be edited they can be typed or pasted, and copied with the button beside them (see _Repositioning markers_). On a read-only map, pressing the coordinates copies them.
 *   A <span class="tn-icon bx bx-expand-alt"></span> button to maximize the popup.
 *   Buttons to interact with the current item:
     *   <span class="tn-icon bx bx-log-in"></span> Open the marker in the same pane, or use <span class="tn-icon bx bx-dots-horizontal-rounded"></span> to open it in a new tab, split, etc.
@@ -271,7 +284,7 @@ This also applies to tracks and [shapes](Geo%20Map/Drawing%20shapes.md).
 
 ### Adding the coordinates manually
 
-Searching for the place is usually quicker (see _Searching the map_ above). The steps below remain useful for a coordinate that is already to hand, or for a place the search cannot find.
+Searching for the place, or pasting the coordinates into a marker's popup (see _Repositioning markers_), is usually quicker. The steps below remain useful for a coordinate that is already to hand, or for a place the search cannot find.
 
 In a nutshell, create a child note and set the `#geolocation` attribute to the coordinates.
 

@@ -17,6 +17,7 @@ import { useNoteLabelByName, useStaticTooltip } from "../../react/hooks";
 import { removeFromMap } from "./api";
 import { type Bounds, boundsOf } from "./coordinates";
 import { trackSourceId } from "./GpxTrack";
+import LocationEditor from "./LocationEditor";
 import { ParentMap } from "./map";
 import { featureAt } from "./ShapeLayer";
 import { geoShapeBounds } from "./shapes";
@@ -263,9 +264,14 @@ export default function DetailPane({ notes, parentNote, placing, isReadOnly, sel
         if (!selection || isMobile()) return;
 
         const onKeyDown = (e: KeyboardEvent) => {
-            if (e.key === "Escape") {
-                void closePane();
+            if (e.key !== "Escape") return;
+            // A half-typed coordinate takes the first Escape, which puts the field back. The next
+            // one closes the pane, as it does from anywhere else.
+            const target = e.target;
+            if (target instanceof Element && target.closest(".geo-location-editor[data-dirty]")) {
+                return;
             }
+            void closePane();
         };
         // Captured, not bubbled: the panel stops key presses made inside it from reaching the map
         // underneath (see OverlayPanel), which would stop them reaching this listener too.
@@ -437,7 +443,7 @@ function MarkerContents({ note, parentNote, isReadOnly, onRelocate }: {
 }) {
     return (
         <>
-            <MarkerLocation note={note} />
+            <MarkerLocation note={note} isReadOnly={isReadOnly} />
 
             <MarkerActions note={note} parentNote={parentNote} isReadOnly={isReadOnly} onRelocate={onRelocate} />
 
@@ -445,9 +451,8 @@ function MarkerContents({ note, parentNote, isReadOnly, onRelocate }: {
                 editor puts them — a marker is often a note whose type says less about it than
                 its fields do. Nothing at all is shown for a note that promotes none.
 
-                Neither the location nor the geometry is among them: promoted, each is a field of
-                raw digits beside a map that already draws it, and a marker is moved rather than
-                retyped. */}
+                Neither the location nor the geometry is among them: the location is the field
+                above, and a shape is redrawn rather than retyped. */}
             <PromotedAttributes omit={OMITTED_ATTRIBUTES} />
 
             {/* The note itself, drawn by whichever widget its type calls for — the same one the
@@ -531,24 +536,33 @@ function MarkerActions({ note, parentNote, isReadOnly, onRelocate }: { note: FNo
 }
 
 /**
- * Where the marker stands, written out under the note's name.
+ * Where the marker stands, under the note's name.
  *
- * The map says it too, but only as exactly as the eye can read a map, and it is the written pair
- * that gets carried into a message or a search box. Pressing it copies — every digit the note holds
- * rather than the six shown, so what lands in the clipboard is the place and not the rounding, which
- * is the bargain the map's own menu strikes for the point under the pointer.
+ * On a map that can be edited the latitude and the longitude are each a field. On a read-only
+ * map it stays the button that copies the position, which is also what a searched place offers
+ * (see PlacePanel).
  */
-function MarkerLocation({ note }: { note: FNote }) {
+function MarkerLocation({ note, isReadOnly }: { note: FNote; isReadOnly: boolean }) {
     const space = useContext(MapSpaceContext);
-    const [ location ] = useNoteLabelByName(note, space.locationAttribute);
+    const [ location, setLocation ] = useNoteLabelByName(note, space.locationAttribute);
     const coordinates = space.parseLocation(location);
 
     // The label is read in an effect, so a marker just opened has nothing to say yet.
     if (!coordinates) {
         return null;
     }
+    if (isReadOnly || location == null) {
+        return <LocationButton coordinates={coordinates} />;
+    }
 
-    return <LocationButton coordinates={coordinates} />;
+    return (
+        <LocationEditor
+            key={note.noteId}
+            coordinates={coordinates}
+            location={location}
+            onMove={(point) => setLocation(space.serializeLocation(point))}
+        />
+    );
 }
 
 /**

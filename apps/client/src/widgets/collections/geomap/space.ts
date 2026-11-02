@@ -14,7 +14,7 @@ import { createContext } from "preact";
 
 import { GPX_MIME } from "../../../services/gpx";
 
-import type { Bounds } from "./coordinates";
+import { parseCoordinates, type Bounds } from "./coordinates";
 import { CIRCLE_SEGMENTS, type GeoShape, parseGeoShape, readShape, serializeGeoShape, shapeRing, writeShape } from "./shapes";
 
 export interface MapSpace {
@@ -29,6 +29,11 @@ export interface MapSpace {
     serializeLocation(point: [number, number]): string;
     /** A `[lng, lat]` position as it is shown, or with `full` as it is copied. */
     formatLocation(point: [number, number], full?: boolean): string;
+    /**
+     * The point `text` names, as `[lng, lat]`, or `null` when it names none. A geo map reads the
+     * forms the search bar reads; an image map reads a pair in its own coordinates.
+     */
+    parseInput(text: string): [number, number] | null;
     /** A shape label's value in `[lng, lat]`, or `null` where it spells none. */
     parseShape(value: string | null | undefined): GeoShape | null;
     /** A shape in `[lng, lat]` as its label value. */
@@ -47,6 +52,7 @@ export const geoSpace: MapSpace = {
     parseLocation,
     serializeLocation: ([ lng, lat ]) => [ lat, lng ].join(","),
     formatLocation: (point, full) => formatLocation(point, full ? FULL_PRECISION : undefined),
+    parseInput: parseCoordinates,
     parseShape: (value) => value ? parseGeoShape(value) : null,
     serializeShape: serializeGeoShape
 };
@@ -247,6 +253,10 @@ export function imageSpace({ width, height }: ImageSize, extent?: ImageExtent | 
             const decimals = full ? storedDecimals : shownDecimals;
             return `${roundTo(x, decimals)}, ${roundTo(y, decimals)}`;
         },
+        parseInput(text) {
+            const pair = parseLoosePair(text);
+            return pair && toLngLat(pair);
+        },
 
         parseShape(value) {
             const written = value ? readShape(value) : null;
@@ -357,4 +367,15 @@ function meanPoint(points: [number, number][]): [number, number] {
         y += point[1];
     }
     return [ x / points.length, y / points.length ];
+}
+
+/** A pair of numbers separated by a comma or by spaces, or `null` when `text` is not one. */
+function parseLoosePair(text: string): [number, number] | null {
+    const match = /^([+-]?\d+(?:\.\d+)?)\s*(?:,\s*|\s+)([+-]?\d+(?:\.\d+)?)$/.exec(text.trim());
+    if (!match) return null;
+
+    const x = Number(match[1]);
+    const y = Number(match[2]);
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+    return [ x, y ];
 }

@@ -10,10 +10,25 @@ describe("geoSpace", () => {
         expect(geoSpace.serializeLocation([ 24.147, 45.796 ])).toBe("45.796,24.147");
         expect(geoSpace.formatLocation([ 24.147, 45.796 ])).toBe("45.796000, 24.147000");
     });
+
+    it("reads a typed or pasted position, and refuses one that is not a place", () => {
+        expect(geoSpace.parseInput("45.9432, 24.9668")).toEqual([ 24.9668, 45.9432 ]);
+        expect(geoSpace.parseInput("geo:45.9432,24.9668")).toEqual([ 24.9668, 45.9432 ]);
+        expect(geoSpace.parseInput("not a place")).toBeNull();
+        // Off the earth, which is the same refusal the search bar makes.
+        expect(geoSpace.parseInput("1234, 5678")).toBeNull();
+    });
 });
 
 describe("imageSpace", () => {
     const space = imageSpace({ width: 2048, height: 1024 });
+
+    it("reads a typed pair in the map's own coordinates, and not a geo link", () => {
+        const point = space.parseLocation("100,50");
+        expect(point).not.toBeNull();
+        expect(space.parseInput("100, 50")).toEqual(point);
+        expect(space.parseInput("geo:100,50")).toBeNull();
+    });
 
     it("round-trips a pixel position through MapLibre's coordinates", () => {
         const point = space.parseLocation("120.5,45");

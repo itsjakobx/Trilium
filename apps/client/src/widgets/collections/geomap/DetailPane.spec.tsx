@@ -1100,18 +1100,113 @@ describe("DetailPane", () => {
         await act(async () => map.click());
         await settle();
 
-        // Rounded to a stride, which is as finely as anywhere is pointed out on a map.
-        const location = pane()?.querySelector<HTMLButtonElement>(".geo-detail-pane-location");
-        expect(location?.textContent).toBe("48.855654, 2.365493");
+        // Rounded to a stride, which is as finely as anywhere is pointed out on a map. Each axis is
+        // its own field; the copy button beside them keeps the old press.
+        const latitude = pane()?.querySelector<HTMLInputElement>(".geo-location-primary");
+        const longitude = pane()?.querySelector<HTMLInputElement>(".geo-location-secondary");
+        expect(latitude?.value).toBe("48.855654");
+        expect(longitude?.value).toBe("2.365493");
         expect(pane()?.querySelector(".promoted-attribute-cell")).toBeNull();
 
         // Carried at every digit the note holds, so what is pasted elsewhere is the place itself.
-        await act(async () => { location?.click(); });
+        const copy = pane()?.querySelector<HTMLButtonElement>(".geo-location-copy");
+        await act(async () => { copy?.click(); });
         expect(copied).toHaveBeenCalledWith("48.855653506551015, 2.365492536863660");
 
         // Named by the app's own tooltip, as the buttons beneath it are, rather than by the one the
         // browser draws from a `title` — which is what carrying no such attribute leaves.
-        expect(location?.getAttribute("title")).toBeNull();
+        expect(copy?.getAttribute("title")).toBeNull();
+    });
+
+    it("moves a marker by typing or pasting, and only copies when read-only", async () => {
+        buildNote({ id: "root", title: "root", children: [ {
+            id: "movablePin",
+            title: "Pin",
+            "#geolocation": "48.855653506551015,2.36549253686366"
+        } ] });
+        const note = froca.notes["movablePin"];
+        const map = fakeMap();
+        await mount([ note ], map);
+        map.setUnderPointer([ markerFeature(note, [ 2.36549253686366, 48.855653506551015 ]) ]);
+        await act(async () => map.click());
+        await settle();
+
+        const setLabel = vi.spyOn(attributes, "setLabel").mockResolvedValue(undefined);
+        try {
+            const latitude = pane()?.querySelector<HTMLInputElement>(".geo-location-primary");
+            const longitude = pane()?.querySelector<HTMLInputElement>(".geo-location-secondary");
+            expect(latitude).toBeTruthy();
+            expect(longitude).toBeTruthy();
+            if (!latitude || !longitude) return;
+
+            // One axis changes. The other keeps the digits the note stored, past the six on screen.
+            await act(async () => {
+                latitude.value = "49";
+                latitude.dispatchEvent(new Event("input", { bubbles: true }));
+                latitude.dispatchEvent(new FocusEvent("focusout", { bubbles: true }));
+            });
+            const storedLongitude = String(parseFloat("2.36549253686366"));
+            expect(setLabel).toHaveBeenCalledWith(
+                note.noteId, "geolocation", `49,${storedLongitude}`
+            );
+
+            setLabel.mockClear();
+            await act(async () => {
+                latitude.value = "12";
+                longitude.value = "34";
+                latitude.dispatchEvent(new Event("input", { bubbles: true }));
+                longitude.dispatchEvent(new Event("input", { bubbles: true }));
+                latitude.dispatchEvent(new FocusEvent("focusout", { bubbles: true }));
+            });
+            expect(setLabel).toHaveBeenCalledWith(note.noteId, "geolocation", "12,34");
+
+            setLabel.mockClear();
+            await act(async () => {
+                const event = new ClipboardEvent("paste", { bubbles: true, cancelable: true });
+                Object.defineProperty(event, "clipboardData", {
+                    value: { getData: () => "10.5, 20.25" }
+                });
+                latitude.dispatchEvent(event);
+            });
+            expect(setLabel).toHaveBeenCalledWith(note.noteId, "geolocation", "10.5,20.25");
+
+            setLabel.mockClear();
+            await act(async () => {
+                latitude.value = "not a place";
+                latitude.dispatchEvent(new Event("input", { bubbles: true }));
+                latitude.dispatchEvent(new FocusEvent("focusout", { bubbles: true }));
+            });
+            expect(setLabel).not.toHaveBeenCalled();
+            const editor = pane()?.querySelector(".geo-location-editor");
+            expect(editor?.classList.contains("invalid")).toBe(true);
+
+            // The first Escape puts the fields back. The next one closes the pane.
+            await act(async () => {
+                latitude.dispatchEvent(new KeyboardEvent("keydown", {
+                    key: "Escape",
+                    bubbles: true
+                }));
+            });
+            expect(pane()).toBeTruthy();
+            expect(latitude.value).not.toBe("not a place");
+            expect(editor?.hasAttribute("data-dirty")).toBe(false);
+            await act(async () => {
+                window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+            });
+            expect(pane()).toBeNull();
+        } finally {
+            setLabel.mockRestore();
+        }
+
+        await mount([ note ], map, false, true);
+        map.setUnderPointer([ markerFeature(note, [ 2.36549253686366, 48.855653506551015 ]) ]);
+        await act(async () => map.click());
+        await settle();
+        expect(pane()?.querySelector(".geo-location-editor")).toBeNull();
+        copied.mockClear();
+        const location = pane()?.querySelector<HTMLButtonElement>(".geo-detail-pane-location");
+        await act(async () => { location?.click(); });
+        expect(copied).toHaveBeenCalledWith("48.855653506551015, 2.365492536863660");
     });
 
     /**
@@ -1390,7 +1485,7 @@ describe("DetailPane", () => {
             expect(sheet()).toBeTruthy();
             // The same contents either way: the note, and what may be done with the marker.
             expect(sheet()?.querySelector(".note-detail-stub")).toBeTruthy();
-            expect(sheet()?.querySelector(".geo-detail-pane-location")).toBeTruthy();
+            expect(sheet()?.querySelector(".geo-location-editor")).toBeTruthy();
         });
 
         it("offers no maximize, the dialog already having the screen", async () => {

@@ -1,0 +1,55 @@
+.geo-map-container .geo-detail-pane .geo-location-editor,
+.modal.geo-detail-sheet .geo-location-editor {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-block: 2px 8px;
+
+    .geo-location-line {
+        display: flex;
+        align-items: flex-end;
+        gap: 4px;
+    }
+
+    .geo-location-axes {
+        display: flex;
+        flex: 1;
+        gap: 6px;
+        min-width: 0;
+    }
+
+    .geo-location-axis {
+        display: flex;
+        flex: 1;
+        flex-direction: column;
+        gap: 2px;
+        min-width: 0;
+
+        > span {
+            font-size: 0.75em;
+            color: var(--muted-text-color);
+        }
+
+        input {
+            width: 100%;
+        }
+    }
+
+    &.invalid .geo-location-axis input {
+        outline: 2px solid var(--bs-danger);
+    }
+
+    .geo-location-hint,
+    .geo-location-error {
+        margin: 0;
+        font-size: 0.8em;
+    }
+
+    .geo-location-hint {
+        color: var(--muted-text-color);
+    }
+
+    .geo-location-error {
+        color: var(--bs-danger);
+    }
+}

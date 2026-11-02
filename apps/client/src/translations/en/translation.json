@@ -3307,7 +3307,14 @@
     "tiles-url-description": "The address of one tile, with {z}, {x} and {y} where the zoom level and the tile's position go. A server with high-resolution tiles can be given {r}, where it expects @2x.",
     "tiles-url-invalid": "A tile URL starts with http:// or https:// and contains {z}, {x} and {y}, so this change wasn't saved.",
     "dark-tiles": "Dark tileset",
-    "dark-tiles-description": "Draws the marker titles in a light color, so that they can be read over dark tiles."
+    "dark-tiles-description": "Draws the marker titles in a light color, so that they can be read over dark tiles.",
+    "coordinates-hint": "You can paste a map link into either field.",
+    "coordinates-hint-image": "You can paste an x and a y into either field.",
+    "coordinates-unreadable": "These coordinates couldn't be read.",
+    "latitude": "Latitude",
+    "longitude": "Longitude",
+    "axis-x": "X",
+    "axis-y": "Y"
   },
   "embedded_note": {
     "open-note": "Open note",
