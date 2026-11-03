@@ -78,7 +78,16 @@ export default class Entrypoints extends Component {
         const activeNoteContext = appContext.tabManager.getActiveContext();
 
         if (activeNoteContext) {
-            activeNoteContext.unhoist();
+            await activeNoteContext.unhoist();
+        }
+    }
+
+    /** Clears every nested hoist. The header's root crumb and "Show all notes" use this. */
+    async unhoistAllCommand() {
+        const activeNoteContext = appContext.tabManager.getActiveContext();
+
+        if (activeNoteContext) {
+            await activeNoteContext.unhoistAll();
         }
     }
 

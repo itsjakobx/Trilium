@@ -40,6 +40,6 @@ describe("ShowAllNotesButton", () => {
         expect(button?.querySelector(".bx-arrow-back")).not.toBeNull();
 
         button?.click();
-        expect(triggerCommand).toHaveBeenCalledWith("unhoist", expect.anything());
+        expect(triggerCommand).toHaveBeenCalledWith("unhoistAll", expect.anything());
     });
 });

@@ -1,10 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // app_context pulls in a very large module graph; mock it to a tiny tab manager surface.
-const activeContextRef: { current: { hoistedNoteId: string; unhoist: () => Promise<void> } | null } = {
+const activeContextRef: { current: { hoistedNoteId: string; unhoist: () => Promise<void>; unhoistAll: () => Promise<void> } | null } = {
     current: null
 };
 const unhoistSpy = vi.fn(async () => {});
+const unhoistAllSpy = vi.fn(async () => {});
 
 vi.mock("../components/app_context.js", () => ({
     default: {
@@ -38,7 +39,7 @@ function setActiveContext(hoistedNoteId: string | null) {
     if (hoistedNoteId === null) {
         activeContextRef.current = null;
     } else {
-        activeContextRef.current = { hoistedNoteId, unhoist: unhoistSpy };
+        activeContextRef.current = { hoistedNoteId, unhoist: unhoistSpy, unhoistAll: unhoistAllSpy };
     }
 }
 
@@ -174,7 +175,7 @@ describe("hoisted_note service", () => {
             const result = await hoistedNoteService.checkNoteAccess("p", ctx(hoisted.noteId));
             expect(result).toBe(true);
             expect(confirm).toHaveBeenCalledTimes(1);
-            expect(unhoistSpy).toHaveBeenCalledTimes(1);
+            expect(unhoistAllSpy).toHaveBeenCalledTimes(1);
         });
 
         it("returns false when the user declines the unhoist confirmation", async () => {
@@ -187,7 +188,7 @@ describe("hoisted_note service", () => {
 
             const result = await hoistedNoteService.checkNoteAccess("p", ctx(hoisted.noteId));
             expect(result).toBe(false);
-            expect(unhoistSpy).not.toHaveBeenCalled();
+            expect(unhoistAllSpy).not.toHaveBeenCalled();
         });
 
         it("skips the confirmation when the hoisted note is already inside _hidden", async () => {
@@ -206,7 +207,7 @@ describe("hoisted_note service", () => {
             const result = await hoistedNoteService.checkNoteAccess("p", ctx(hoisted.noteId));
             expect(result).toBe(true);
             expect(confirm).not.toHaveBeenCalled();
-            expect(unhoistSpy).toHaveBeenCalledTimes(1);
+            expect(unhoistAllSpy).toHaveBeenCalledTimes(1);
         });
 
         it("still prompts for a bookmark path even when the hoisted note is inside _hidden", async () => {
@@ -230,7 +231,7 @@ describe("hoisted_note service", () => {
             // confirm was declined -> access denied, no unhoist.
             expect(result).toBe(false);
             expect(confirm).toHaveBeenCalledTimes(1);
-            expect(unhoistSpy).not.toHaveBeenCalled();
+            expect(unhoistAllSpy).not.toHaveBeenCalled();
         });
 
         it("unhoists for a confirmed bookmark path when the hoisted note is inside _hidden", async () => {
@@ -250,7 +251,7 @@ describe("hoisted_note service", () => {
             const result = await hoistedNoteService.checkNoteAccess("p", ctx(hoisted.noteId));
             expect(result).toBe(true);
             expect(confirm).toHaveBeenCalledTimes(1);
-            expect(unhoistSpy).toHaveBeenCalledTimes(1);
+            expect(unhoistAllSpy).toHaveBeenCalledTimes(1);
         });
     });
 });

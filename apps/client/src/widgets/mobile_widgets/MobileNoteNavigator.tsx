@@ -209,9 +209,19 @@ export default function MobileNoteNavigator() {
     }, [stack, navigateTo]);
 
     const unhoist = useCallback(() => {
-        if (tabId) leaveHoistedNote(tabId, activeNotePath, effectiveHoistedId);
+        const trail = noteContext?.hoistStack?.length ? noteContext.hoistStack : [ "root" ];
+        const parentId = trail.length >= 2 ? trail[trail.length - 2] : "root";
+        if (tabId) {
+            // Popping the last hoist returns to the column that holds it. Popping a nested hoist
+            // stays inside the hoist above it.
+            if (parentId === "root") {
+                leaveHoistedNote(tabId, activeNotePath, effectiveHoistedId);
+            } else {
+                enterHoistedNote(tabId, activeNotePath, parentId);
+            }
+        }
         void hoisted_note.unhoist();
-    }, [tabId, activeNotePath, effectiveHoistedId]);
+    }, [tabId, activeNotePath, effectiveHoistedId, noteContext]);
 
     const enterWorkspace = useCallback((noteId: string) => {
         if (tabId) enterHoistedNote(tabId, activeNotePath, noteId);

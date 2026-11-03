@@ -19,6 +19,14 @@ async function unhoist() {
     }
 }
 
+async function unhoistAll() {
+    const activeNoteContext = appContext.tabManager.getActiveContext();
+
+    if (activeNoteContext) {
+        await activeNoteContext.unhoistAll();
+    }
+}
+
 function isTopLevelNode(node: Fancytree.FancytreeNode) {
     return isHoistedNode(node.getParent());
 }
@@ -67,8 +75,13 @@ async function checkNoteAccess(notePath: string, noteContext: NoteContext) {
             return false;
         }
 
-        // unhoist so we can activate the note
-        await unhoist();
+        // Leave only the hoists that still contain the note. A context without the trail (tests,
+        // older callers) drops every hoist, which is what a single hoisted note used to do.
+        if (noteContext.revealHoistedNotePath) {
+            await noteContext.revealHoistedNotePath(resolvedNotePath);
+        } else {
+            await unhoistAll();
+        }
     }
 
     return true;
@@ -77,6 +90,7 @@ async function checkNoteAccess(notePath: string, noteContext: NoteContext) {
 export default {
     getHoistedNoteId,
     unhoist,
+    unhoistAll,
     isTopLevelNode,
     isHoistedNode,
     checkNoteAccess,

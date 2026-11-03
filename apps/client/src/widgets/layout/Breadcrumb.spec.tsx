@@ -1,14 +1,18 @@
 import { act } from "preact/test-utils";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import appContext from "../../components/app_context";
+import Component from "../../components/component";
 import type NoteContext from "../../components/note_context";
+import type TabManager from "../../components/tab_manager";
 import type { MenuCommandItem } from "../../menus/context_menu";
 import froca from "../../services/froca";
 import protectedSessionHolder from "../../services/protected_session_holder";
 import { buildNote } from "../../test/easy-froca";
 import { renderInto } from "../../test/render";
-import {
-    BreadcrumbNoteTitle, BreadcrumbSeparator, buildChildNoteItems, noteTitleHtml
+import { ParentComponent } from "../react/react_utils";
+import Breadcrumb, {
+    BreadcrumbNoteTitle, BreadcrumbSeparator, buildChildNoteItems, HoistTrail, noteTitleHtml
 } from "./Breadcrumb";
 
 vi.mock("../../services/i18n", async (importOriginal) => ({
@@ -143,6 +147,143 @@ describe("noteTitleHtml", () => {
         vi.spyOn(protectedSessionHolder, "isProtectedSessionAvailable").mockReturnValue(false);
         const locked = `<span class="protected-title">protected_session.locked_note_title</span>`;
         expect(noteTitleHtml(note)).toBe(`${locked}${lock}`);
+    });
+});
+
+describe("HoistTrail", () => {
+    function renderTrail() {
+        buildNote({
+            id: "root", title: "Root", children: [
+                {
+                    id: "work", title: "Work", "#workspace": "",
+                    "#workspaceIconClass": "bx bx-briefcase",
+                    "#workspaceTabBackgroundColor": "#112233",
+                    children: [
+                        { id: "mid", title: "Folder", children: [
+                            { id: "proj", title: "Project" }
+                        ] }
+                    ]
+                }
+            ]
+        });
+        const setHoistedNoteId = vi.fn();
+        const setNote = vi.fn();
+        const unhoistAll = vi.fn();
+        const noteContext = { setHoistedNoteId, setNote, unhoistAll } as unknown as NoteContext;
+        let container: HTMLElement | undefined;
+        act(() => {
+            container = renderInto(
+                <HoistTrail stack={[ "root", "work", "mid", "proj" ]} noteContext={noteContext} />
+            );
+        });
+        return { container, setHoistedNoteId, setNote, unhoistAll };
+    }
+
+    it("renders a workspace badge and a hoist pill, and each click shortens the trail differently", () => {
+        const { container, setHoistedNoteId, setNote, unhoistAll } = renderTrail();
+        const workspace = container?.querySelector<HTMLElement>(".badge-workspace");
+        expect(workspace?.textContent).toContain("Work");
+        expect(workspace?.querySelector(".bx-briefcase")).not.toBeNull();
+        expect(workspace?.style.getPropertyValue("--color")).toBe("#112233");
+        expect(workspace?.style.color).toBe("#fff");
+
+        const pills = [ ...container?.querySelectorAll<HTMLButtonElement>(".breadcrumb-hoist-pill") ?? [] ];
+        expect(pills.map((pill) => pill.textContent)).toEqual([ "Folder", "Project" ]);
+
+        workspace?.click();
+        expect(setHoistedNoteId).toHaveBeenCalledWith("work", { activateHoistedNote: true });
+
+        pills[0]?.click();
+        expect(setHoistedNoteId).toHaveBeenCalledWith("mid");
+
+        pills[1]?.click();
+        expect(setNote).toHaveBeenCalledWith("proj");
+
+        container?.querySelector<HTMLButtonElement>(".root-note")?.click();
+        expect(unhoistAll).toHaveBeenCalledTimes(1);
+    });
+
+    it("draws a chevron between hoists and does not open a child list from it", () => {
+        const { container, setHoistedNoteId, setNote } = renderTrail();
+        const chevrons = [ ...container?.querySelectorAll(".breadcrumb-hoist-chevron") ?? [] ];
+        expect(chevrons).toHaveLength(3);
+        expect(container?.querySelector(".breadcrumb-separator")).toBeNull();
+
+        for (const chevron of chevrons) (chevron as HTMLElement).click();
+        expect(setHoistedNoteId).not.toHaveBeenCalled();
+        expect(setNote).not.toHaveBeenCalled();
+    });
+
+    it("folds the middle of a long trail into the same dots menu as a long note path", () => {
+        buildNote({
+            id: "root", title: "Root", children: [
+                { id: "h1", title: "One", children: [
+                    { id: "h2", title: "Two", "#workspace": "", "#workspaceIconClass": "bx bx-briefcase", children: [
+                        { id: "h3", title: "Three", children: [
+                            { id: "h4", title: "Four", children: [
+                                { id: "h5", title: "Five", children: [
+                                    { id: "h6", title: "Six" }
+                                ] }
+                            ] }
+                        ] }
+                    ] }
+                ] }
+            ]
+        });
+        const setHoistedNoteId = vi.fn();
+        const noteContext = { setHoistedNoteId, setNote: vi.fn(), unhoistAll: vi.fn() } as unknown as NoteContext;
+        let container: HTMLElement | undefined;
+        act(() => {
+            container = renderInto(
+                <HoistTrail
+                    stack={[ "root", "h1", "h2", "h3", "h4", "h5", "h6" ]}
+                    noteContext={noteContext}
+                />
+            );
+        });
+
+        const pills = [ ...container?.querySelectorAll<HTMLButtonElement>(".breadcrumb-hoist-pill") ?? [] ];
+        expect(pills.map((pill) => pill.textContent)).toEqual([ "One", "Four", "Five", "Six" ]);
+        expect(container?.querySelector(".bx-dots-horizontal-rounded")).not.toBeNull();
+
+        act(() => container?.querySelector<HTMLButtonElement>(".bx-dots-horizontal-rounded")?.closest("button")?.click());
+        const hidden = [ ...document.querySelectorAll(".breadcrumb-child-list li.dropdown-item") ];
+        expect(hidden.map((row) => row.textContent)).toEqual([ "Two", "Three" ]);
+        expect(hidden[0]?.querySelector(".bx-briefcase")).not.toBeNull();
+
+        act(() => hidden[0]?.querySelector("button")?.click() ?? (hidden[0] as HTMLElement | undefined)?.click());
+        expect(setHoistedNoteId).toHaveBeenCalledWith("h2", { activateHoistedNote: true });
+    });
+
+    it("draws the hoist trail while the open note has no path yet", () => {
+        buildNote({ id: "root", title: "Root", children: [ { id: "work", title: "Work" } ] });
+        const tabManager = appContext.tabManager;
+        appContext.tabManager = {
+            getActiveContext: () => ({
+                ntxId: "tab",
+                hoistedNoteId: "work",
+                hoistStack: [ "root", "work" ],
+                notePath: null,
+                note: null,
+                viewScope: {}
+            })
+        } as unknown as TabManager;
+        try {
+            let container: HTMLElement | undefined;
+            expect(() => {
+                act(() => {
+                    container = renderInto(
+                        <ParentComponent.Provider value={new Component()}>
+                            <Breadcrumb />
+                        </ParentComponent.Provider>
+                    );
+                });
+            }).not.toThrow();
+            expect(container?.querySelector(".breadcrumb-hoist-trail")).not.toBeNull();
+            expect(container?.querySelector(".breadcrumb-last-item")).toBeNull();
+        } finally {
+            appContext.tabManager = tabManager;
+        }
     });
 });
 

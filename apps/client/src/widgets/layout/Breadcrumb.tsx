@@ -1,6 +1,7 @@
 import "./Breadcrumb.css";
 
 import clsx from "clsx";
+import type { ComponentChildren } from "preact";
 import { useContext, useRef, useState } from "preact/hooks";
 import { Fragment } from "preact/jsx-runtime";
 
@@ -17,7 +18,6 @@ import branches from "../../services/branches";
 import { copyTextWithToast } from "../../services/clipboard_ext";
 import { getReadableTextColor } from "../../services/css_class_manager";
 import froca from "../../services/froca";
-import hoisted_note from "../../services/hoisted_note";
 import { t } from "../../services/i18n";
 import note_create from "../../services/note_create";
 import options from "../../services/options";
@@ -39,41 +39,31 @@ const INITIAL_ITEMS = 2;
 const FINAL_ITEMS = 3;
 
 export default function Breadcrumb() {
-    const { notePath, notePaths, noteContext } = useNotePaths();
+    const { notePath, notePaths, noteContext, hoistStack } = useNotePaths();
     const parentComponent = useContext(ParentComponent);
     const [ hideArchivedNotes ] = useTriliumOptionBool("hideArchivedNotes_main");
     const separatorProps: Omit<BreadcrumbSeparatorProps, "notePath" | "activeNotePath"> = { noteContext, hideArchivedNotes };
+    const hoisted = hoistStack.length > 1;
+    const itemProps = { noteContext, parentComponent, hoisted };
 
     return (
         <div className="breadcrumb">
-            {notePaths.length > COLLAPSE_THRESHOLD ? (
+            {hoisted && (
                 <>
-                    {notePaths.slice(0, INITIAL_ITEMS).map((item, index) => (
-                        <Fragment key={item}>
-                            <BreadcrumbItem index={index} notePath={item} notePathLength={notePaths.length} noteContext={noteContext} parentComponent={parentComponent} />
-                            <BreadcrumbSeparator notePath={item} activeNotePath={notePaths[index + 1]} {...separatorProps} />
-                        </Fragment>
-                    ))}
-                    <BreadcrumbCollapsed items={notePaths.slice(INITIAL_ITEMS, -FINAL_ITEMS)} noteContext={noteContext} />
-                    {notePaths.slice(-FINAL_ITEMS).map((item, index) => (
-                        <Fragment key={item}>
-                            <BreadcrumbSeparator notePath={notePaths[notePaths.length - FINAL_ITEMS - (1 - index)]} activeNotePath={item} {...separatorProps} />
-                            <BreadcrumbItem index={notePaths.length - FINAL_ITEMS + index} notePath={item} notePathLength={notePaths.length} noteContext={noteContext} parentComponent={parentComponent} />
-                        </Fragment>
-                    ))}
-                    <BreadcrumbSeparator notePath={notePaths.at(-1)} {...separatorProps} />
+                    <HoistTrail stack={hoistStack} noteContext={noteContext} />
+                    <span className="breadcrumb-hoist-divider" role="separator" aria-hidden="true" />
                 </>
-            ) : (
-                notePaths.map((item, index) => (
-                    <Fragment key={item}>
-                        {index === 0
-                            ? <BreadcrumbRoot noteContext={noteContext} />
-                            : <BreadcrumbItem index={index} notePath={item} notePathLength={notePaths.length} noteContext={noteContext} parentComponent={parentComponent} />
-                        }
-                        <BreadcrumbSeparator notePath={item} activeNotePath={notePaths[index + 1]} {...separatorProps} />
-                    </Fragment>
-                ))
             )}
+            <BreadcrumbTrack
+                paths={notePaths}
+                renderItem={(path, index) => (
+                    <BreadcrumbItem index={index} notePath={path} notePathLength={notePaths.length} {...itemProps} />
+                )}
+                renderSeparator={(notePath, nextPath) => (
+                    <BreadcrumbSeparator notePath={notePath} activeNotePath={nextPath} {...separatorProps} />
+                )}
+                onCollapsedSelect={(path) => noteContext?.setNote(path)}
+            />
 
             <div
                 className="filler"
@@ -83,63 +73,186 @@ export default function Breadcrumb() {
     );
 }
 
-function BreadcrumbRoot({ noteContext }: { noteContext: NoteContext | undefined }) {
-    const noteId = noteContext?.hoistedNoteId ?? "root";
-    if (noteId !== "root") {
-        return <BreadcrumbHoistedNoteRoot noteId={noteId} />;
-    }
-
-    // Root note is icon only.
+function BreadcrumbRoot({ noteContext, resetHoisting }: { noteContext: NoteContext | undefined; resetHoisting?: boolean }) {
+    // Root note is icon only. In the hoist trail it clears every nested hoist; in the ordinary
+    // breadcrumb it opens the root note.
     const note = froca.getNoteFromCache("root");
     return (note &&
         <ActionButton
             className="root-note"
             icon={note.getIcon()}
             text={""}
-            onClick={() => noteContext?.setNote(note.noteId)}
+            onClick={() => {
+                if (resetHoisting) {
+                    void noteContext?.unhoistAll();
+                } else {
+                    void noteContext?.setNote(note.noteId);
+                }
+            }}
             onContextMenu={(e) => {
                 e.preventDefault();
                 link_context_menu.openContextMenu(note.noteId, e);
             }}
         />
     );
-
 }
 
-function BreadcrumbHoistedNoteRoot({ noteId }: { noteId: string }) {
+/**
+ * One row for both header segments. The crumbs and the dots fold are shared. The note path's
+ * chevron lists children; the hoist trail's chevron is only a mark between hoists. A crumb opens
+ * the note on the right and unhoists down to it on the left.
+ */
+function BreadcrumbTrack({ paths, renderItem, renderSeparator, onCollapsedSelect, trailingSeparator = true }: {
+    paths: string[];
+    renderItem: (notePath: string, index: number) => ComponentChildren;
+    renderSeparator: (notePath: string, nextPath: string | undefined) => ComponentChildren;
+    onCollapsedSelect: (notePath: string) => void;
+    /** The note path keeps a chevron after its last crumb. The hoist trail ends at the divider. */
+    trailingSeparator?: boolean;
+}) {
+    const separatorAfter = (index: number) => trailingSeparator || index < paths.length - 1;
+
+    if (paths.length <= COLLAPSE_THRESHOLD) {
+        return (
+            <>
+                {paths.map((notePath, index) => (
+                    <Fragment key={notePath}>
+                        {renderItem(notePath, index)}
+                        {separatorAfter(index) && renderSeparator(notePath, paths[index + 1])}
+                    </Fragment>
+                ))}
+            </>
+        );
+    }
+
+    const head = paths.slice(0, INITIAL_ITEMS);
+    const middle = paths.slice(INITIAL_ITEMS, -FINAL_ITEMS);
+    const tailStart = paths.length - FINAL_ITEMS;
+    return (
+        <>
+            {head.map((notePath, index) => (
+                <Fragment key={notePath}>
+                    {renderItem(notePath, index)}
+                    {renderSeparator(notePath, paths[index + 1])}
+                </Fragment>
+            ))}
+            <BreadcrumbCollapsed items={middle} onSelect={onCollapsedSelect} />
+            {paths.slice(tailStart).map((notePath, index) => {
+                const absolute = tailStart + index;
+                return (
+                    <Fragment key={notePath}>
+                        {renderSeparator(paths[absolute - 1], notePath)}
+                        {renderItem(notePath, absolute)}
+                        {trailingSeparator && absolute === paths.length - 1 && renderSeparator(notePath, undefined)}
+                    </Fragment>
+                );
+            })}
+        </>
+    );
+}
+
+/**
+ * The left side of the header while at least one note is hoisted: root, then each nested hoist.
+ * A workspace is a badge in its own color and icon. Any other hoist is a text pill. Clicking one
+ * pops the trail down to that note and keeps every hoist above it.
+ */
+export function HoistTrail({ stack, noteContext }: {
+    stack: string[];
+    noteContext: NoteContext | undefined;
+}) {
+    const activeId = stack.at(-1);
+
+    return (
+        <nav className="breadcrumb-hoist-trail" aria-label={t("breadcrumb.hoist_trail")}>
+            <BreadcrumbTrack
+                paths={stack}
+                trailingSeparator={false}
+                onCollapsedSelect={(noteId) => selectHoistPath(noteContext, noteId, false)}
+                renderSeparator={() => <HoistChevron />}
+                renderItem={(noteId) => {
+                    if (noteId === "root") return <BreadcrumbRoot noteContext={noteContext} resetHoisting />;
+                    return <HoistTrailNote noteId={noteId} noteContext={noteContext} active={noteId === activeId} />;
+                }}
+            />
+        </nav>
+    );
+}
+
+/** A mark between hoists. The children of a hoist are reached from the note path, not from here. */
+function HoistChevron() {
+    return (
+        <span className="breadcrumb-hoist-chevron" aria-hidden="true">
+            <Icon icon="bx bxs-chevron-right" />
+        </span>
+    );
+}
+
+function selectHoistPath(noteContext: NoteContext | undefined, notePath: string, active: boolean) {
+    const noteId = notePath.split("/").at(-1);
+    if (!noteId) return;
+    const workspace = !!froca.getNoteFromCache(noteId)?.isLabelTruthy("workspace");
+    selectHoist(noteContext, noteId, active, workspace);
+}
+
+function selectHoist(noteContext: NoteContext | undefined, noteId: string, active: boolean, workspace: boolean) {
+    if (!noteContext) return;
+    // A workspace is the boundary of its sandbox: open that note, not whatever descendant
+    // happened to be showing. Any other hoist only shortens the trail.
+    if (workspace) {
+        void noteContext.setHoistedNoteId(noteId, { activateHoistedNote: true });
+    } else if (active) {
+        void noteContext.setNote(noteId);
+    } else {
+        void noteContext.setHoistedNoteId(noteId);
+    }
+}
+
+function HoistTrailNote({ noteId, noteContext, active }: { noteId: string; noteContext: NoteContext | undefined; active: boolean }) {
     const note = useNote(noteId);
     const noteIcon = useNoteIcon(note);
     const [ workspace ] = useNoteLabelBoolean(note, "workspace");
     const [ workspaceIconClass ] = useNoteLabel(note, "workspaceIconClass");
     const [ workspaceColor ] = useNoteLabel(note, "workspaceTabBackgroundColor");
+    if (!note) return null;
 
-    // Hoisted workspace shows both text and icon and a way to exit easily out of the hoisting.
-    return (note &&
-        <>
+    const title = note.isContentAvailable() ? note.title : t("protected_session.locked_note_title");
+    const onClick = () => selectHoist(noteContext, noteId, active, workspace);
+
+    if (workspace) {
+        const icon = workspaceIconClass || noteIcon;
+        return (
             <Badge
-                className="badge-hoisted"
-                icon={workspace ? (workspaceIconClass || noteIcon) : "bx bxs-chevrons-up"}
-                text={workspace ? t("breadcrumb.workspace_badge") : t("breadcrumb.hoisted_badge")}
-                tooltip={t("breadcrumb.hoisted_badge_title")}
-                onClick={() => hoisted_note.unhoist()}
+                className={clsx("badge-hoisted", "badge-workspace", active && "is-active")}
+                icon={icon}
+                text={<BreadcrumbNoteTitle note={note} />}
+                tooltip={t("breadcrumb.workspace_reset", { title })}
+                onClick={onClick}
                 style={workspaceColor ? {
                     "--color": workspaceColor,
                     "color": getReadableTextColor(workspaceColor)
                 } : undefined}
             />
-            <NewNoteLink
-                notePath={noteId}
-                showNoteIcon
-                noPreview
-            />
-        </>
+        );
+    }
+
+    return (
+        <button
+            type="button"
+            className={clsx("breadcrumb-hoist-pill", active && "is-active")}
+            data-note-id={noteId}
+            title={t("breadcrumb.unhoist_to", { title })}
+            onClick={onClick}
+        >
+            <BreadcrumbNoteTitle note={note} />
+        </button>
     );
 }
 
 function BreadcrumbLastItem({ notePath, parentComponent }: { notePath: string, parentComponent: Component | null }) {
     const linkRef = useRef<HTMLAnchorElement>(null);
     const { noteId, parentNoteId } = tree.getNoteIdAndParentIdFromUrl(notePath);
-    const [ note ] = useState(() => froca.getNoteFromCache(noteId!));
+    // A hoisted tab can render before its note path arrives. An empty id makes froca throw.
+    const [ note ] = useState(() => noteId ? froca.getNoteFromCache(noteId) : undefined);
     const title = useNoteTitle(noteId, parentNoteId);
     const colorClass = useNoteColorClass(note);
     const [ archived ] = useNoteLabelBoolean(note, "archived");
@@ -165,8 +278,10 @@ function BreadcrumbLastItem({ notePath, parentComponent }: { notePath: string, p
     );
 }
 
-function BreadcrumbItem({ index, notePath, noteContext, notePathLength, parentComponent }: { index: number, notePathLength: number, notePath: string, noteContext: NoteContext | undefined, parentComponent: Component | null }) {
-    if (index === 0) {
+function BreadcrumbItem({ index, notePath, noteContext, notePathLength, parentComponent, hoisted }: { index: number, notePathLength: number, notePath: string, noteContext: NoteContext | undefined, parentComponent: Component | null, hoisted: boolean }) {
+    // While hoisted, the path is already anchored at the active hoist, so its first crumb is that
+    // note rather than the global root (the root lives on the hoist trail).
+    if (index === 0 && !hoisted) {
         return <BreadcrumbRoot noteContext={noteContext} />;
     }
 
@@ -264,9 +379,9 @@ function noteTitleTextHtml(note: FNote) {
     return `<span class="protected-title">${locked}</span>`;
 }
 
-function BreadcrumbCollapsed({ items, noteContext }: {
+function BreadcrumbCollapsed({ items, onSelect }: {
     items: string[],
-    noteContext: NoteContext | undefined,
+    onSelect: (notePath: string) => void,
 }) {
     return (
         <Dropdown
@@ -276,22 +391,30 @@ function BreadcrumbCollapsed({ items, noteContext }: {
             dropdownContainerClassName="breadcrumb-child-list"
             hideToggleArrow
         >
-            {items.map((notePath) => {
-                const notePathComponents = notePath.split("/");
-                const noteId = notePathComponents[notePathComponents.length - 1];
-                const note = froca.getNoteFromCache(noteId);
-                if (!note) return null;
-
-                return <li key={note.noteId}>
-                    <FormListItem
-                        icon={note.getIcon()}
-                        onClick={() => noteContext?.setNote(notePath)}
-                    >
-                        <span><BreadcrumbNoteTitle note={note} /></span>
-                    </FormListItem>
-                </li>;
-            })}
+            {items.map((notePath) => (
+                <CollapsedCrumb key={notePath} notePath={notePath} onSelect={onSelect} />
+            ))}
         </Dropdown>
+    );
+}
+
+function CollapsedCrumb({ notePath, onSelect }: { notePath: string; onSelect: (notePath: string) => void }) {
+    const noteId = notePath.split("/").at(-1);
+    const note = useNote(noteId);
+    const noteIcon = useNoteIcon(note);
+    const [ workspace ] = useNoteLabelBoolean(note, "workspace");
+    const [ workspaceIconClass ] = useNoteLabel(note, "workspaceIconClass");
+    if (!note) return null;
+
+    return (
+        <li>
+            <FormListItem
+                icon={workspace ? (workspaceIconClass || noteIcon) : note.getIcon()}
+                onClick={() => onSelect(notePath)}
+            >
+                <span><BreadcrumbNoteTitle note={note} /></span>
+            </FormListItem>
+        </li>
     );
 }
 
@@ -307,8 +430,9 @@ export function BreadcrumbNoteTitle({ note }: { note: FNote }) {
 }
 
 function useNotePaths() {
-    const { note, notePath, hoistedNoteId, noteContext } = useActiveNoteContext();
-    const notePathArray = (notePath ?? "").split("/");
+    const { note, notePath, hoistedNoteId, noteContext, hoistStack } = useActiveNoteContext();
+    // No path yet (a hoisted tab still opening, or an empty one) is an empty trail, not a blank id.
+    const notePathArray = notePath ? notePath.split("/").filter(Boolean) : [];
 
     let prefix = "";
     let output: string[] = [];
@@ -332,7 +456,8 @@ function useNotePaths() {
         note,
         notePath,
         notePaths: output,
-        noteContext
+        noteContext,
+        hoistStack: hoistStack?.length ? hoistStack : [ "root" ]
     };
 }
 

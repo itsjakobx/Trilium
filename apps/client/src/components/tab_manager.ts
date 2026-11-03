@@ -26,6 +26,8 @@ export interface NoteContextState {
     mainNtxId: string | null;
     notePath: string | null;
     hoistedNoteId: string;
+    /** Nested hoists from root through `hoistedNoteId`. Absent on tabs saved before the trail existed. */
+    hoistStack?: string[];
     active: boolean;
     viewScope: Record<string, any>;
     pinned?: boolean;
@@ -104,7 +106,7 @@ export default class TabManager extends Component {
 
             // preload all notes at once
             await froca.getNotes([...noteContextsToOpen.flatMap((tab: NoteContextState) =>
-                [treeService.getNoteIdFromUrl(tab.notePath), tab.hoistedNoteId])], true);
+                [treeService.getNoteIdFromUrl(tab.notePath), tab.hoistedNoteId, ...(tab.hoistStack ?? [])])], true);
 
             const filteredNoteContexts = noteContextsToOpen.filter((openTab: NoteContextState) => {
                 const noteId = treeService.getNoteIdFromUrl(openTab.notePath);
@@ -115,6 +117,9 @@ export default class TabManager extends Component {
 
                 if (!(openTab.hoistedNoteId in froca.notes)) {
                     openTab.hoistedNoteId = "root";
+                    openTab.hoistStack = ["root"];
+                } else if (openTab.hoistStack) {
+                    openTab.hoistStack = openTab.hoistStack.filter((noteId) => noteId === "root" || noteId in froca.notes);
                 }
 
                 return true;
@@ -140,6 +145,7 @@ export default class TabManager extends Component {
                         ntxId: tab.ntxId,
                         mainNtxId: tab.mainNtxId,
                         hoistedNoteId: tab.hoistedNoteId,
+                        hoistStack: tab.hoistStack,
                         viewScope: tab.viewScope,
                         pinned: tab.pinned
                     });
@@ -411,13 +417,19 @@ export default class TabManager extends Component {
         activate: boolean = false,
         placement: TabPlacement = "end"
     ) {
+        const activeContext = this.getActiveContext();
         const noteContext = await this.openEmptyTab(
             null,
-            hoistedNoteId || this.getActiveContext()?.hoistedNoteId,
+            hoistedNoteId || activeContext?.hoistedNoteId,
             null,
             false,
             placement
         );
+        // A tab opened inside the current sandbox keeps the nested trail. `restoreHoistStack`
+        // truncates it when this tab is hoisted to an ancestor of the active one.
+        if (activeContext?.hoistStack?.length) {
+            noteContext.restoreHoistStack(activeContext.hoistStack);
+        }
 
         await noteContext.setNote(targetNoteId);
 
@@ -457,6 +469,7 @@ export default class TabManager extends Component {
 
             if (resolvedNotePath?.includes(noteContext.hoistedNoteId) || resolvedNotePath?.includes("_hidden")) {
                 hoistedNoteId = noteContext.hoistedNoteId;
+                opts.hoistStack = noteContext.hoistStack;
             }
         }
 
@@ -472,6 +485,7 @@ export default class TabManager extends Component {
             ntxId?: string | null;
             mainNtxId?: string | null;
             hoistedNoteId?: string | null;
+            hoistStack?: readonly string[] | null;
             viewScope?: Record<string, any> | null;
             pinned?: boolean | null;
             /** Where the new tab is placed in the row. Defaults to `"end"`; link/middle-click opens pass `"afterCurrent"`. */
@@ -493,6 +507,9 @@ export default class TabManager extends Component {
             !!opts.pinned,
             opts.placement ?? "end"
         );
+        if (opts.hoistStack?.length) {
+            noteContext.restoreHoistStack(opts.hoistStack);
+        }
         if (notePath) {
             await noteContext.setNote(notePath, {
                 // if activate is false, then send normal noteSwitched event

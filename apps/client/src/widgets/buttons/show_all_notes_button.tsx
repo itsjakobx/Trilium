@@ -19,7 +19,7 @@ export default function ShowAllNotesButton() {
                     kind="lowProfile"
                     icon="bx-arrow-back"
                     text={t("note_tree.show-all-notes")}
-                    triggerCommand="unhoist"
+                    triggerCommand="unhoistAll"
                 />
             )}
         </div>

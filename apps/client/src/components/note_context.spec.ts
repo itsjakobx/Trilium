@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import froca from "../services/froca.js";
 import type { ViewScope } from "../services/link.js";
 import utils from "../services/utils.js";
 import { buildNote } from "../test/easy-froca.js";
@@ -163,5 +164,97 @@ describe("NoteContext on a phone", () => {
         await noteContext.setHoistedNoteId("workspace");
         expect(noteContext.notePath).toBe("root/workspace");
         expect(screenSwitches()).toEqual([]);
+    });
+});
+
+describe("NoteContext hoist stack", () => {
+    const { tabManager } = appContext;
+    beforeEach(() => {
+        appContext.tabManager = {
+            getActiveContextNotePath: () => null,
+            noteContexts: []
+        } as unknown as TabManager;
+    });
+    afterEach(() => {
+        appContext.tabManager = tabManager;
+    });
+
+    function tree() {
+        buildNote({
+            id: "root", title: "Root", children: [
+                { id: "work", title: "Work", "#workspace": "", children: [
+                    { id: "proj", title: "Project", children: [
+                        { id: "page", title: "Page" }
+                    ] }
+                ] },
+                { id: "other", title: "Other" }
+            ]
+        });
+    }
+
+    it("pushes a nested hoist and pops one layer without dropping the ones above it", async () => {
+        tree();
+        const noteContext = new NoteContext();
+        await noteContext.setNote("root/work/proj/page", { skipRecentNotes: true, triggerSwitchEvent: false });
+        await noteContext.setHoistedNoteId("work");
+        await noteContext.setHoistedNoteId("proj");
+
+        expect(noteContext.hoistStack).toEqual([ "root", "work", "proj" ]);
+        expect(noteContext.hoistedNoteId).toBe("proj");
+        expect(noteContext.noteId).toBe("page");
+
+        await noteContext.unhoist();
+        expect(noteContext.hoistStack).toEqual([ "root", "work" ]);
+        expect(noteContext.hoistedNoteId).toBe("work");
+        expect(noteContext.noteId).toBe("page");
+
+        await noteContext.setHoistedNoteId("work", { activateHoistedNote: true });
+        expect(noteContext.noteId).toBe("work");
+
+        await noteContext.unhoistAll();
+        expect(noteContext.hoistStack).toEqual([ "root" ]);
+        expect(noteContext.hoistedNoteId).toBe("root");
+    });
+
+    it("replaces the trail when the new hoist is outside it, and reveals only the hoists that contain a note", async () => {
+        tree();
+        const noteContext = new NoteContext();
+        await noteContext.setNote("root/work/proj/page", { skipRecentNotes: true, triggerSwitchEvent: false });
+        await noteContext.setHoistedNoteId("work");
+        await noteContext.setHoistedNoteId("proj");
+
+        await noteContext.revealHoistedNotePath("root/work/proj");
+        expect(noteContext.hoistStack).toEqual([ "root", "work", "proj" ]);
+
+        await noteContext.revealHoistedNotePath("root/work");
+        expect(noteContext.hoistStack).toEqual([ "root", "work" ]);
+
+        await noteContext.setHoistedNoteId("proj");
+        await noteContext.revealHoistedNotePath("root/other");
+        expect(noteContext.hoistStack).toEqual([ "root" ]);
+
+        await noteContext.setHoistedNoteId("work");
+        await noteContext.setHoistedNoteId("other");
+        expect(noteContext.hoistStack).toEqual([ "root", "other" ]);
+    });
+
+    it("falls back to the nearest remaining hoist when a hoisted note is deleted", async () => {
+        tree();
+        const noteContext = new NoteContext();
+        await noteContext.setNote("root/work/proj/page", { skipRecentNotes: true, triggerSwitchEvent: false });
+        await noteContext.setHoistedNoteId("work");
+        await noteContext.setHoistedNoteId("proj");
+        delete froca.notes["proj"];
+
+        await noteContext.entitiesReloadedEvent({
+            loadResults: {
+                isNoteReloaded: (id: string) => id === "proj" || id === "page",
+                getEntityRow: () => ({ isDeleted: true }),
+                getBranchRows: () => []
+            }
+        } as never);
+
+        expect(noteContext.hoistStack).toEqual([ "root", "work" ]);
+        expect(noteContext.hoistedNoteId).toBe("work");
     });
 });

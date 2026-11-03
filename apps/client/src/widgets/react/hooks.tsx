@@ -19,6 +19,7 @@ import attributes from "../../services/attributes";
 import { expandAncestorDetails } from "../../services/collapsible";
 import froca from "../../services/froca";
 import { addHighlights, findRegExpRanges, findTermRanges, removeHighlights } from "../../services/highlight_matches";
+import { readHoistState, type HoistState } from "../../services/hoist_stack";
 import { t } from "../../services/i18n";
 import keyboard_actions from "../../services/keyboard_actions";
 import { formatShortcut, joinShortcut } from "../../services/keyboard_shortcut_display";
@@ -502,7 +503,8 @@ export function useNoteContext() {
     const [ noteContext, setNoteContext ] = useState<NoteContext | undefined>(() => noteContextContext ?? findClosestNoteContext(parentComponent));
     const [ notePath, setNotePath ] = useState<string | null | undefined>(noteContext?.notePath);
     const [ note, setNote ] = useState<FNote | null | undefined>(noteContext?.note);
-    const [ hoistedNoteId, setHoistedNoteId ] = useState(noteContext?.hoistedNoteId);
+    // One state so the hoist trail and the active hoist re-render together.
+    const [ hoist, setHoist ] = useState<HoistState>(() => readHoistState(noteContext));
     const [ , setViewScope ] = useState<ViewScope>();
     const [ isReadOnlyTemporarilyDisabled, setIsReadOnlyTemporarilyDisabled ] = useState<boolean | null | undefined>(noteContext?.viewScope?.isReadOnly);
     const [ refreshCounter, setRefreshCounter ] = useState(0);
@@ -510,7 +512,7 @@ export function useNoteContext() {
     useEffect(() => {
         if (!noteContextContext) return;
         setNoteContext(noteContextContext);
-        setHoistedNoteId(noteContextContext.hoistedNoteId);
+        setHoist(readHoistState(noteContextContext));
         setNote(noteContextContext.note);
         setNotePath(noteContextContext.notePath);
         setViewScope(noteContextContext.viewScope);
@@ -527,7 +529,7 @@ export function useNoteContext() {
         // settings pages from the in-popup selector) — otherwise the popup would stay on the first page.
         if (noteContextContext && noteContext !== noteContextContext) return;
         setNoteContext(noteContext);
-        setHoistedNoteId(noteContext.hoistedNoteId);
+        setHoist(readHoistState(noteContext));
         setNotePath(noteContext.notePath);
         setViewScope(noteContext.viewScope);
         // Navigating resets the view scope, so the temporary "enable editing" toggle must be reset too.
@@ -549,9 +551,12 @@ export function useNoteContext() {
             setIsReadOnlyTemporarilyDisabled(eventNoteContext?.viewScope?.readOnlyTemporarilyDisabled);
         }
     });
-    useTriliumEvent("hoistedNoteChanged", ({ noteId, ntxId }) => {
+    useTriliumEvent("hoistedNoteChanged", ({ noteId, ntxId, hoistStack }) => {
         if (ntxId === noteContext?.ntxId) {
-            setHoistedNoteId(noteId);
+            setHoist({
+                hoistedNoteId: noteId,
+                hoistStack: hoistStack ?? noteContext.hoistStack ?? ["root"]
+            });
         }
     });
 
@@ -561,7 +566,8 @@ export function useNoteContext() {
         note,
         noteId: noteContext?.note?.noteId,
         notePath: noteContext?.notePath,
-        hoistedNoteId,
+        hoistedNoteId: hoist.hoistedNoteId,
+        hoistStack: hoist.hoistStack,
         ntxId: noteContext?.ntxId,
         viewScope: noteContext?.viewScope,
         componentId: parentComponent.componentId,
@@ -588,10 +594,14 @@ export function useDetachedNoteContext(noteContext: NoteContext) {
  */
 export function useActiveNoteContext() {
     const [ noteContext, setNoteContext ] = useState<NoteContext | undefined>(appContext.tabManager.getActiveContext() ?? undefined);
-    const [ notePath, setNotePath ] = useState<string | null | undefined>();
-    const [ note, setNote ] = useState<FNote | null | undefined>();
+    // Seed the path with the tab already open. Leaving it empty until an effect runs makes the
+    // breadcrumb ask froca for a blank note id while a hoist is already known.
+    const [ notePath, setNotePath ] = useState<string | null | undefined>(noteContext?.notePath);
+    const [ note, setNote ] = useState<FNote | null | undefined>(noteContext?.note);
     const [ , setViewScope ] = useState<ViewScope>();
-    const [ hoistedNoteId, setHoistedNoteId ] = useState(noteContext?.hoistedNoteId);
+    // One state so the hoist trail and the active hoist re-render together.
+    const [ hoist, setHoist ] = useState<HoistState>(() => readHoistState(noteContext));
+    const { hoistedNoteId, hoistStack } = hoist;
     const [ isReadOnlyTemporarilyDisabled, setIsReadOnlyTemporarilyDisabled ] = useState<boolean | null | undefined>(noteContext?.viewScope?.isReadOnly);
     const [ refreshCounter, setRefreshCounter ] = useState(0);
 
@@ -609,7 +619,7 @@ export function useActiveNoteContext() {
     useTriliumEvents([ "setNoteContext", "activeContextChanged", "noteSwitchedAndActivated", "noteSwitched" ], () => {
         const noteContext = appContext.tabManager.getActiveContext() ?? undefined;
         setNoteContext(noteContext);
-        setHoistedNoteId(noteContext?.hoistedNoteId);
+        setHoist(readHoistState(noteContext));
         setNotePath(noteContext?.notePath);
         setViewScope(noteContext?.viewScope);
         // Navigating resets the view scope, so the temporary "enable editing" toggle must be reset too,
@@ -629,9 +639,12 @@ export function useActiveNoteContext() {
             setIsReadOnlyTemporarilyDisabled(eventNoteContext?.viewScope?.readOnlyTemporarilyDisabled);
         }
     });
-    useTriliumEvent("hoistedNoteChanged", ({ noteId, ntxId }) => {
+    useTriliumEvent("hoistedNoteChanged", ({ noteId, ntxId, hoistStack: nextStack }) => {
         if (ntxId === noteContext?.ntxId) {
-            setHoistedNoteId(noteId);
+            setHoist({
+                hoistedNoteId: noteId,
+                hoistStack: nextStack ?? noteContext.hoistStack ?? ["root"]
+            });
         }
     });
     /**
@@ -654,6 +667,7 @@ export function useActiveNoteContext() {
         /** The note path of the note context. Unlike `noteContext.notePath`, this one actually reacts to the active note being moved around. */
         notePath,
         hoistedNoteId,
+        hoistStack,
         ntxId: noteContext?.ntxId,
         viewScope: noteContext?.viewScope,
         componentId: parentComponent.componentId,

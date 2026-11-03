@@ -424,6 +424,8 @@ export type CommandMappings = {
     openNoteOnServer: CommandData;
     renderActiveNote: CommandData;
     unhoist: CommandData;
+    /** Clears every nested hoist, as opposed to {@link unhoist} which leaves the one above. */
+    unhoistAll: CommandData;
     reloadFrontendApp: CommandData;
     openDevTools: CommandData;
     findInText: CommandData & { searchTerms?: string[] };
@@ -543,6 +545,8 @@ type EventMappings = {
     hoistedNoteChanged: {
         noteId: string;
         ntxId: string | null;
+        /** The trail from root through `noteId`, so both breadcrumb segments refresh from one event. */
+        hoistStack?: string[];
     };
     contextsReopened: {
         ntxId?: string;

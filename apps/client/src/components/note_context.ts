@@ -4,8 +4,10 @@ import type CodeMirror from "@triliumnext/codemirror";
 import type FNote from "../entities/fnote.js";
 import { closeActiveDialog } from "../services/dialog.js";
 import froca from "../services/froca.js";
+import { keptHoistPrefix, nextHoistStack, normalizeHoistStack, stacksEqual } from "../services/hoist_stack.js";
 import hoistedNoteService from "../services/hoisted_note.js";
 import type { ViewScope } from "../services/link.js";
+import type LoadResults from "../services/load_results.js";
 import options from "../services/options.js";
 import protectedSessionHolder from "../services/protected_session_holder.js";
 import server from "../services/server.js";
@@ -125,6 +127,11 @@ type ContextDataKey = keyof NoteContextDataMap;
 class NoteContext extends Component implements EventListener<"entitiesReloaded"> {
     ntxId: string | null;
     hoistedNoteId: string;
+    /**
+     * Nested hoists from the global root to {@link hoistedNoteId}. Hoisting inside the active hoist
+     * pushes; unhoisting to an entry already on the trail pops back to it and keeps the ones above.
+     */
+    hoistStack: string[];
     mainNtxId: string | null;
 
     /** When true, this tab stays on its current note: navigations to a different note open a new tab instead. Only meaningful on a main context. */
@@ -150,6 +157,7 @@ class NoteContext extends Component implements EventListener<"entitiesReloaded">
 
         this.ntxId = ntxId || NoteContext.generateNtxId();
         this.hoistedNoteId = hoistedNoteId;
+        this.hoistStack = normalizeHoistStack(undefined, hoistedNoteId);
         this.mainNtxId = mainNtxId;
 
         this.resetViewScope();
@@ -207,6 +215,7 @@ class NoteContext extends Component implements EventListener<"entitiesReloaded">
                 activate: true,
                 viewScope,
                 hoistedNoteId: this.hoistedNoteId,
+                hoistStack: this.hoistStack,
                 historyEntry: opts.historyEntry
             });
         }
@@ -378,6 +387,7 @@ class NoteContext extends Component implements EventListener<"entitiesReloaded">
             mainNtxId: this.mainNtxId,
             notePath: this.notePath,
             hoistedNoteId: this.hoistedNoteId,
+            hoistStack: this.hoistStack,
             active: this.isActive(),
             viewScope: this.viewScope,
             pinned: this.pinned,
@@ -385,27 +395,144 @@ class NoteContext extends Component implements EventListener<"entitiesReloaded">
         };
     }
 
+    /** Leaves the active hoist for the one above it, or for the global root when nothing is nested. */
     async unhoist() {
+        const parentId = this.hoistStack.length >= 2 ? this.hoistStack[this.hoistStack.length - 2] : "root";
+        await this.setHoistedNoteId(parentId);
+    }
+
+    /** Drops every hoist and shows the whole tree. */
+    async unhoistAll() {
         await this.setHoistedNoteId("root");
     }
 
-    async setHoistedNoteId(noteIdToHoist: string) {
-        if (this.hoistedNoteId === noteIdToHoist) {
+    /**
+     * Moves the trail to the deepest hoist that still contains `resolvedNotePath`, or to root when
+     * the note sits outside every hoist. Used after the user confirms opening a note outside the
+     * sandbox, so a nested trail is not thrown away when an outer hoist still holds the note.
+     */
+    async revealHoistedNotePath(resolvedNotePath: string) {
+        const segments = new Set(resolvedNotePath.split("/"));
+        let target = "root";
+        for (const noteId of this.hoistStack) {
+            if (noteId !== "root" && !segments.has(noteId)) {
+                break;
+            }
+            target = noteId;
+        }
+        await this.setHoistedNoteId(target);
+    }
+
+    /**
+     * Replaces a saved trail when the tab is restored. The active hoist stays `hoistedNoteId`;
+     * entries after it, and any that no longer match it, are dropped.
+     */
+    restoreHoistStack(stack: readonly string[] | undefined) {
+        this.hoistStack = normalizeHoistStack(stack, this.hoistedNoteId);
+    }
+
+    async setHoistedNoteId(noteIdToHoist: string, opts: { activateHoistedNote?: boolean } = {}) {
+        const requestedId = noteIdToHoist || "root";
+        if (requestedId !== "root") {
+            const note = froca.getNoteFromCache(requestedId) ?? await froca.getNote(requestedId, true);
+            if (!note) {
+                await this.fallbackHoistStack();
+                return;
+            }
+        }
+
+        const nextStack = nextHoistStack(this.hoistStack, requestedId, this.isInsideActiveHoist(requestedId));
+        const nextId = nextStack[nextStack.length - 1] ?? "root";
+        const unchanged = nextId === this.hoistedNoteId && stacksEqual(nextStack, this.hoistStack);
+
+        if (!unchanged) {
+            this.hoistStack = nextStack;
+            this.hoistedNoteId = nextId;
+        }
+
+        // Opening the hoisted note itself (a workspace badge) replaces a descendant. A hoist that
+        // the open note is already inside of leaves that note where it is. A phone showing the tree
+        // keeps showing it when the hoisted note is opened only because the previous note was outside.
+        const openNoteIsInside = this.notePathArray?.includes(nextId);
+        if (opts.activateHoistedNote || (!unchanged && !openNoteIsInside)) {
+            if (this.noteId !== nextId) {
+                await this.setNote(nextId, { keepScreen: true });
+            }
+        }
+
+        if (!unchanged) {
+            await this.triggerEvent("hoistedNoteChanged", {
+                noteId: nextId,
+                ntxId: this.ntxId,
+                hoistStack: this.hoistStack
+            });
+        }
+    }
+
+    /** Whether `noteId` is strictly inside the active hoist, so hoisting it nests rather than replaces. */
+    private isInsideActiveHoist(noteId: string) {
+        const activeId = this.hoistStack.at(-1) ?? this.hoistedNoteId;
+        if (!noteId || noteId === "root" || !activeId || activeId === "root" || noteId === activeId) {
+            return false;
+        }
+
+        const path = this.notePathArray;
+        const activeIndex = path.indexOf(activeId);
+        const targetIndex = path.lastIndexOf(noteId);
+        if (activeIndex >= 0 && targetIndex > activeIndex) {
+            return true;
+        }
+
+        const note = froca.getNoteFromCache(noteId);
+        return !!note && note.hasAncestor(activeId);
+    }
+
+    /**
+     * Drops hoists that were deleted or lost their place under the hoist above them, back to the
+     * nearest trail entry that is still there, or to the global root.
+     */
+    private async fallbackHoistStack() {
+        const nextStack = keptHoistPrefix(this.hoistStack, (noteId, parentId) => this.hoistEntryIsValid(noteId, parentId));
+        if (stacksEqual(nextStack, this.hoistStack)) {
             return;
         }
 
-        this.hoistedNoteId = noteIdToHoist;
+        this.hoistStack = nextStack;
+        this.hoistedNoteId = nextStack[nextStack.length - 1] ?? "root";
 
-        // The hoisted note replaces one outside it without being opened on purpose, so a phone
-        // showing the tree keeps showing it.
-        if (!this.notePathArray?.includes(noteIdToHoist)) {
-            await this.setNote(noteIdToHoist, { keepScreen: true });
+        if (!this.notePathArray?.includes(this.hoistedNoteId)) {
+            await this.setNote(this.hoistedNoteId, { keepScreen: true });
         }
 
         await this.triggerEvent("hoistedNoteChanged", {
-            noteId: noteIdToHoist,
-            ntxId: this.ntxId
+            noteId: this.hoistedNoteId,
+            ntxId: this.ntxId,
+            hoistStack: this.hoistStack
         });
+    }
+
+    private hoistEntryIsValid(noteId: string, parentId: string) {
+        const note = froca.getNoteFromCache(noteId);
+        if (!note) {
+            return false;
+        }
+        if (parentId !== "root" && !note.hasAncestor(parentId)) {
+            return false;
+        }
+        // A note whose branches are gone no longer belongs to the tree. Hidden-subtree hoists
+        // (options, launch bar) stay valid through `_hidden` rather than through an ordinary parent.
+        return note.noteId === "root" || note.hasAncestor("root") || note.hasAncestor("_hidden") || note.isInHiddenSubtree();
+    }
+
+    private hoistTrailAffected(loadResults: LoadResults) {
+        for (const noteId of this.hoistStack) {
+            if (noteId === "root") continue;
+            if (!(noteId in froca.notes)) return true;
+            if (!loadResults.isNoteReloaded(noteId)) continue;
+            const row = loadResults.getEntityRow("notes", noteId);
+            if (!row || row.isDeleted) return true;
+        }
+        return loadResults.getBranchRows().some((branch) => this.hoistStack.includes(branch.noteId));
     }
 
     /** @returns {Promise<boolean>} */
@@ -481,12 +608,17 @@ class NoteContext extends Component implements EventListener<"entitiesReloaded">
                 this.clearRemovedNote();
             }
         }
+
+        if (this.hoistTrailAffected(loadResults)) {
+            await this.fallbackHoistStack();
+        }
     }
 
-    frocaReloadedEvent() {
+    async frocaReloadedEvent() {
         if (this.noteId && !(this.noteId in froca.notes)) {
             this.clearRemovedNote();
         }
+        await this.fallbackHoistStack();
     }
 
     private clearRemovedNote() {
