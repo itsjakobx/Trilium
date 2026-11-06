@@ -4,7 +4,6 @@ import becca from "../../becca/becca.js";
 import * as cls from "../../services/context.js";
 import dateNoteService from "../../services/date_notes.js";
 import specialNotesService, { type LauncherType } from "../../services/special_notes.js";
-import { getSql } from "../../services/sql/index.js";
 
 function getInboxNote(req: Request<{ date: string }>) {
     return specialNotesService.getInboxNote(req.params.date);
@@ -40,35 +39,17 @@ function getYearNote(req: Request<{ year: string }>) {
     return dateNoteService.getYearNote(req.params.year);
 }
 
-function getDayNotesForMonth(req: Request) {
+function getDayNotesForMonth(req: Request<{ month: string }>) {
     const month = req.params.month;
-    const calendarRoot = req.query.calendarRoot;
-    const query = `\
-        SELECT
-            attr.value AS date,
-            notes.noteId
-        FROM notes
-        JOIN attributes attr USING(noteId)
-        WHERE notes.isDeleted = 0
-            AND attr.isDeleted = 0
-            AND attr.type = 'label'
-            AND attr.name = 'dateNote'
-            AND attr.value LIKE ? || '%'`;
+    const calendarRootId = req.query.calendarRoot;
 
-    const sql = getSql();
-    if (calendarRoot) {
-        const rows = sql.getRows<{ date: string; noteId: string }>(query, [month]);
-        const result: Record<string, string> = {};
-        for (const { date, noteId } of rows) {
-            const note = becca.getNote(noteId);
-            if (note?.hasAncestor(String(calendarRoot))) {
-                result[date] = noteId;
-            }
-        }
-
-        return result;
+    // An explicit root limits the month to that note. Without one, the hoist
+    // decides: the workspace calendar while hoisted, otherwise the global journal.
+    if (typeof calendarRootId === "string" && calendarRootId) {
+        return dateNoteService.getDayNoteMapForMonth(month, becca.getNote(calendarRootId));
     }
-    return sql.getMap(query, [month]);
+
+    return dateNoteService.getDayNoteMapForMonth(month, dateNoteService.getExistingCalendarRoot());
 }
 
 async function saveSqlConsole(req: Request) {

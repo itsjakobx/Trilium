@@ -1,5 +1,6 @@
 import type BNote from "../becca/entities/bnote.js";
 
+import becca from "../becca/becca.js";
 import attributeService from "./attributes.js";
 import cloningService from "./cloning.js";
 import { dayjs, Dayjs, getFirstDayOfWeek1, getWeekInfo, WeekSettings } from "@triliumnext/commons";
@@ -14,6 +15,7 @@ import { t } from "i18next";
 import { ordinal } from "./i18n.js";
 
 const CALENDAR_ROOT_LABEL = "calendarRoot";
+const WORKSPACE_CALENDAR_ROOT_LABEL = "workspaceCalendarRoot";
 const YEAR_LABEL = "yearNote";
 const QUARTER_LABEL = "quarterNote";
 const MONTH_LABEL = "monthNote";
@@ -153,20 +155,129 @@ function createNote(parentNote: BNote, noteTitle: string) {
     }).note;
 }
 
-function getRootCalendarNote(): BNote {
-    let rootNote;
-
+/**
+ * The workspace calendar, when the current hoist is a workspace that has one.
+ * At the root there is no workspace calendar to use: searching there would see
+ * every `#workspaceCalendarRoot`.
+ */
+function findHoistedWorkspaceCalendar(): BNote | null {
     const workspaceNote = hoistedNoteService.getWorkspaceNote();
 
-    if (!workspaceNote || !workspaceNote.isRoot()) {
-        rootNote = searchService.findFirstNoteWithQuery(
-            "#workspaceCalendarRoot", new searchContext({ ignoreHoistedNote: false })
-        );
+    if (workspaceNote?.isRoot()) {
+        return null;
     }
 
-    if (!rootNote) {
-        rootNote = attributeService.getNoteWithLabel(CALENDAR_ROOT_LABEL);
+    return searchService.findFirstNoteWithQuery(
+        `#${WORKSPACE_CALENDAR_ROOT_LABEL}`,
+        new searchContext({ ignoreHoistedNote: false })
+    );
+}
+
+/** The calendar new day notes go to, or null when the journal has been removed. */
+function getExistingCalendarRoot(): BNote | null {
+    return findHoistedWorkspaceCalendar() ?? attributeService.getNoteWithLabel(CALENDAR_ROOT_LABEL);
+}
+
+function isOwnedCalendarRoot(note: BNote): boolean {
+    return note.hasOwnedLabel(CALENDAR_ROOT_LABEL)
+        || note.hasOwnedLabel(WORKSPACE_CALENDAR_ROOT_LABEL);
+}
+
+/**
+ * Whether `note` is this calendar's own year, month or day note.
+ *
+ * A workspace calendar placed inside the journal carries the same labels on
+ * its own copies. Those copies stay with the workspace: a path that reaches
+ * them passes through their `#workspaceCalendarRoot` first.
+ */
+function belongsToCalendar(note: BNote, rootNote: BNote): boolean {
+    const seen = new Set<string>();
+
+    function reaches(current: BNote): boolean {
+        if (current.noteId === rootNote.noteId) {
+            return true;
+        }
+
+        if (seen.has(current.noteId) || isOwnedCalendarRoot(current)) {
+            return false;
+        }
+
+        seen.add(current.noteId);
+
+        for (const parent of current.getParentNotes()) {
+            if (reaches(parent)) {
+                return true;
+            }
+        }
+
+        return false;
     }
+
+    return reaches(note);
+}
+
+function findJournalNote(rootNote: BNote, labelName: string, value: string): BNote | null {
+    const matches = searchService.searchNotes(`#${labelName}="${value}"`, {
+        ancestorNoteId: rootNote.noteId
+    });
+
+    for (const note of matches) {
+        if (note && belongsToCalendar(note, rootNote)) {
+            return note;
+        }
+    }
+
+    return null;
+}
+
+const DAY_NOTES_FOR_MONTH_SQL = `\
+        SELECT
+            attr.value AS date,
+            notes.noteId
+        FROM notes
+        JOIN attributes attr USING(noteId)
+        WHERE notes.isDeleted = 0
+            AND attr.isDeleted = 0
+            AND attr.type = 'label'
+            AND attr.name = 'dateNote'
+            AND attr.value LIKE ? || '%'`;
+
+/**
+ * Day notes of `month` (`YYYY-MM`) that belong to `calendarRoot`.
+ *
+ * A calendar root contributes its own day notes. An ancestor that is not a
+ * calendar, such as the document root, contributes every day note under it.
+ */
+function getDayNoteMapForMonth(month: string, calendarRoot: BNote | null): Record<string, string> {
+    if (!calendarRoot) {
+        return {};
+    }
+
+    const rows = getSql().getRows<{ date: string; noteId: string }>(
+        DAY_NOTES_FOR_MONTH_SQL, [month]
+    );
+    const strict = isOwnedCalendarRoot(calendarRoot);
+    const result: Record<string, string> = {};
+
+    for (const { date, noteId } of rows) {
+        const note = becca.getNote(noteId);
+        if (!note) {
+            continue;
+        }
+
+        const included = strict
+            ? belongsToCalendar(note, calendarRoot)
+            : note.hasAncestor(calendarRoot.noteId);
+        if (included) {
+            result[date] = noteId;
+        }
+    }
+
+    return result;
+}
+
+function getRootCalendarNote(): BNote {
+    let rootNote = getExistingCalendarRoot();
 
     if (!rootNote) {
         getSql().transactional(() => {
@@ -192,9 +303,7 @@ function getYearNote(dateStr: string, _rootNote: BNote | null = null): BNote {
 
     const yearStr = dateStr.trim().substring(0, 4);
 
-    let yearNote = searchService.findFirstNoteWithQuery(
-        `#${YEAR_LABEL}="${yearStr}"`, new searchContext({ ancestorNoteId: rootNote.noteId })
-    );
+    let yearNote = findJournalNote(rootNote, YEAR_LABEL, yearStr);
 
     if (yearNote) {
         return yearNote;
@@ -225,9 +334,7 @@ function getQuarterNote(quarterStr: string, _rootNote: BNote | null = null): BNo
 
     quarterStr = quarterStr.trim().substring(0, 7);
 
-    let quarterNote = searchService.findFirstNoteWithQuery(
-        `#${QUARTER_LABEL}="${quarterStr}"`, new searchContext({ ancestorNoteId: rootNote.noteId })
-    );
+    let quarterNote = findJournalNote(rootNote, QUARTER_LABEL, quarterStr);
 
     if (quarterNote) {
         return quarterNote;
@@ -267,9 +374,7 @@ function getMonthNote(dateStr: string, _rootNote: BNote | null = null): BNote {
     const monthStr = dateStr.substring(0, 7);
     const monthNumber = dateStr.substring(5, 7);
 
-    let monthNote = searchService.findFirstNoteWithQuery(
-        `#${MONTH_LABEL}="${monthStr}"`, new searchContext({ ancestorNoteId: rootNote.noteId })
-    );
+    let monthNote = findJournalNote(rootNote, MONTH_LABEL, monthStr);
 
     if (monthNote) {
         return monthNote;
@@ -343,9 +448,7 @@ function getWeekNote(weekStr: string, _rootNote: BNote | null = null): BNote | n
 
     weekStr = weekStr.trim().substring(0, 8);
 
-    let weekNote = searchService.findFirstNoteWithQuery(
-        `#${WEEK_LABEL}="${weekStr}"`, new searchContext({ ancestorNoteId: rootNote.noteId })
-    );
+    let weekNote = findJournalNote(rootNote, WEEK_LABEL, weekStr);
 
     if (weekNote) {
         return weekNote;
@@ -394,9 +497,7 @@ function getDayNote(dateStr: string, _rootNote: BNote | null = null): BNote {
 
     dateStr = dateStr.trim().substring(0, 10);
 
-    let dateNote = searchService.findFirstNoteWithQuery(
-        `#${DATE_LABEL}="${dateStr}"`, new searchContext({ ancestorNoteId: rootNote.noteId })
-    );
+    let dateNote = findJournalNote(rootNote, DATE_LABEL, dateStr);
 
     if (dateNote) {
         return dateNote;
@@ -445,6 +546,8 @@ function hasCalendarRoot() {
 
 export default {
     getRootCalendarNote,
+    getExistingCalendarRoot,
+    getDayNoteMapForMonth,
     hasCalendarRoot,
     getYearNote,
     getQuarterNote,
